@@ -2,6 +2,10 @@ local log = require('omnisharp_extended/log')
 local utils = require('omnisharp_extended/utils')
 local lsp_util = require 'vim.lsp.util'
 
+local pickers = require "telescope.pickers"
+local finders = require "telescope.finders"
+local conf = require("telescope.config").values
+
 local M = {}
 
 M.defolderize = function(str)
@@ -184,6 +188,79 @@ M.handler = function(err, result, ctx, config)
   local handled = M.handle_locations(locations)
   if not handled then
     return vim.lsp.handlers['textDocument/definition'](err, result, ctx, config)
+  end
+end
+
+M.handle_locations_telescope = function(locations, opts)
+  opts = opts or {}
+
+  local fetched = M.get_metadata(locations)
+
+  if #locations == 0 then
+    return
+  elseif #locations == 1 and opts.jump_type ~= "never" then
+    if opts.jump_type == "tab" then
+      vim.cmd "tabedit"
+    elseif opts.jump_type == "split" then
+      vim.cmd "new"
+    elseif opts.jump_type == "vsplit" then
+      vim.cmd "vnew"
+    end
+    vim.lsp.util.jump_to_location(locations[1])
+  else
+    local locations = vim.lsp.util.locations_to_items(locations)
+    pickers.new(opts, {
+      prompt_title = title,
+      finder = finders.new_table {
+        results = locations,
+        entry_maker = opts.entry_maker or make_entry.gen_from_quickfix(opts),
+      },
+      previewer = conf.qflist_previewer(opts),
+      sorter = conf.generic_sorter(opts),
+    }):find()
+  end
+end
+
+M.handler_telescope = function(err, result, ctx, config, opts)
+  -- If definition request is made from meta document, then it SHOULD
+  -- always return no results.
+  local req_from_meta = M.parse_meta_uri(ctx.params.textDocument.uri)
+  if req_from_meta then
+    -- if request was from metadata document,
+    -- repeat it with /gotodefinition since that supports metadata
+    -- documents properly ( https://github.com/OmniSharp/omnisharp-roslyn/issues/2238 )
+    local params = {
+      fileName = string.gsub(ctx.params.textDocument.uri, 'file:///', ''),
+      column = ctx.params.position.character,
+      line = ctx.params.position.line,
+    }
+
+    local client = M.get_omnisharp_client()
+    if client then
+      local result, err = client.request_sync('o#/v2/gotodefinition', params, 10000)
+      if err then
+        vim.api.nvim_err_writeln('Error when executing ' .. 'o#/v2/gotodefinition' .. ' : ' .. err)
+        return
+      end
+
+      local locations = M.definitions_to_locations(result.result.Definitions)
+      M.handle_locations_telescope(locations)
+    end
+  end
+
+  local locations = M.textdocument_definition_to_locations(result)
+  M.handle_locations_telescope(locations)
+end
+
+M.telescope_lsp_definitions = function(opts)
+  local client = M.get_omnisharp_client()
+  if client then
+    local handler = function(err, result, ctx, config)
+      M.handler_telescope(err, result, ctx, config, opts)
+    end
+
+    local params = vim.lsp.util.make_position_params()
+    client.request('textDocument/definition', params, handler)
   end
 end
 

@@ -38,6 +38,14 @@ local config = {
 require'lspconfig'.omnisharp.setup(config)
 ```
 
+### Telescope
+
+This handler can also be used for [nvim-telescope](https://github.com/nvim-telescope/telescope.nvim):
+
+```vimscript
+nnoremap gd <cmd>lua require('omnisharp_extended').telescope_lsp_definitions()<cr>
+```
+
 ## Important notes
 
 - !! Plugin searches for LSP server configured with the name `omnisharp`, so if your server is configured using a different name, this will not work out of the box.
