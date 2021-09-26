@@ -41,4 +41,23 @@ U.get_or_create_buf = function(name)
   return bufnr
 end
 
+U.set_qflist_locations = function(locations)
+  local items = vim.lsp.util.locations_to_items(locations)
+  vim.fn.setqflist({}, ' ', {
+    title = 'Language Server';
+    items = items;
+  })
+end
+
+U.jump_to_location = function(location, bufnr)
+  if not bufnr then
+    -- if bufnr is provided, assume its configured
+    bufnr = vim.uri_to_bufnr(location.uri)
+    vim.api.nvim_buf_set_option(0, 'buflisted', true)
+  end
+
+  vim.api.nvim_set_current_buf(bufnr)
+  vim.api.nvim_win_set_cursor(0, { location.range.start.line+1, location.range.start.character })
+end
+
 return U

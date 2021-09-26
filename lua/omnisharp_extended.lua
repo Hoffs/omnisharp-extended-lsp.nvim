@@ -1,5 +1,6 @@
 local log = require('omnisharp_extended/log')
 local utils = require('omnisharp_extended/utils')
+local lsp_util = require 'vim.lsp.util'
 
 local M = {}
 
@@ -31,33 +32,27 @@ M.get_omnisharp_client = function()
   return
 end
 
-M.on_metadata = function(error, result, ctx, config, range)
-  if error then
-    return
-  end
-
+M.buf_from_metadata = function(result, client_id)
   local normalized = string.gsub(result.Source, '\r\n', '\n')
   local source_lines = utils.split(normalized, '\n')
 
+  local file_name = '/' .. result.SourceName
+
   -- this will be /$metadata$/...
-  local bufnr = utils.get_or_create_buf('/' .. result.SourceName)
+  local bufnr = utils.get_or_create_buf(file_name)
   -- TODO: check if bufnr == 0 -> error
   vim.api.nvim_buf_set_lines(bufnr, 0, -1, true, source_lines)
   vim.api.nvim_buf_set_option(bufnr, 'filetype', 'cs')
 
-  -- attach lsp client
-  vim.lsp.buf_attach_client(bufnr, ctx.client_id)
+  -- attach lsp client ??
+  vim.lsp.buf_attach_client(bufnr, client_id)
 
   -- vim.api.nvim_win_set_buf(0, bufnr)
 
   -- set_cursor is (1, 0) indexed, where LSP range is 0 indexed, so add 1 to line number
   -- vim.api.nvim_win_set_cursor(0, { range.start.line+1, range.start.character })
-end
-
-M.make_on_metadata = function(range)
-  return function(error, result, ctx, config)
-    M.on_metadata(error, result, ctx, config, range)
-  end
+  --
+  return bufnr, file_name
 end
 
 -- Gets metadata for all locations with $metadata$
@@ -69,7 +64,7 @@ M.get_metadata = function(locations)
     return false
   end
 
-  local required_metadata = false
+  local fetched = {}
   for _, loc in pairs(locations) do
     local uri = utils.urldecode(loc.uri)
     local is_meta, project, assembly, symbol = M.parse_meta_uri(uri)
@@ -85,22 +80,29 @@ M.get_metadata = function(locations)
 
       -- request_sync?
       -- if async, need to trigger when all are finished
-      client.request('o#/metadata', params, M.make_on_metadata(loc.range))
+      local result, err = client.request_sync('o#/metadata', params, 10000)
+      if not err then
+        local bufnr, name = M.buf_from_metadata(result.result, client.id)
+        fetched[loc.uri] = {
+          bufnr = bufnr,
+          range = loc.range,
+        }
+      end
     end
   end
 
-  return required_metadata
+  return fetched
 end
 
-M.on_gotodefinition = function(error, result, ctx, config)
+M.definitions_to_locations = function(definitions)
   -- translate definitions to locations
   -- https://github.com/OmniSharp/omnisharp-roslyn/blob/master/src/OmniSharp.LanguageServerProtocol/Handlers/OmniSharpDefinitionHandler.cs#L44
-  if result.Definitions == nil then
-    return vim.NIL
+  if definitions == nil then
+    return nil
   end
 
   local locations = {}
-  for i, definition in pairs(result.Definitions) do
+  for i, definition in pairs(definitions) do
     local range = {}
     range['start'] = {
       line = definition.Location.Range.Start.Line,
@@ -112,15 +114,14 @@ M.on_gotodefinition = function(error, result, ctx, config)
     }
 
     local location = {
-      uri = definition.Location.FileName,
+      uri = string.gsub(definition.Location.FileName, '^%$metadata%$', 'file:///$metadata$'),
       range = range
     }
 
     table.insert(locations, location)
   end
 
-
-  M.get_metadata(locations)
+  return locations
 end
 
 M.textdocument_definition_to_locations = function(result)
@@ -131,11 +132,29 @@ M.textdocument_definition_to_locations = function(result)
   return result
 end
 
+M.handle_locations = function(locations)
+  local fetched = M.get_metadata(locations)
+
+  if not vim.tbl_isempty(fetched) then
+    if #locations > 1 then
+      utils.set_qflist_locations(locations)
+      vim.api.nvim_command("copen")
+      return true
+    else
+      -- utils.jump_to_location(locations[1], fetched[locations[1].uri].bufnr)
+      vim.lsp.util.jump_to_location(locations[1])
+      return true
+    end
+  else
+    return false
+  end
+end
+
 M.handler = function(err, result, ctx, config)
   -- If definition request is made from meta document, then it SHOULD
   -- always return no results.
   local req_from_meta = M.parse_meta_uri(ctx.params.textDocument.uri)
-  if result.uri == nil and req_from_meta then
+  if req_from_meta then
     -- if request was from metadata document,
     -- repeat it with /gotodefinition since that supports metadata
     -- documents properly ( https://github.com/OmniSharp/omnisharp-roslyn/issues/2238 )
@@ -147,21 +166,23 @@ M.handler = function(err, result, ctx, config)
 
     local client = M.get_omnisharp_client()
     if client then
-      client.request('o#/v2/gotodefinition', params, M.on_gotodefinition)
-    end
+      local result, err = client.request_sync('o#/v2/gotodefinition', params, 10000)
+      if err then
+        vim.api.nvim_err_writeln('Error when executing ' .. 'o#/v2/gotodefinition' .. ' : ' .. err)
+        return
+      end
 
-    return vim.NIL
+      local locations = M.definitions_to_locations(result.result.Definitions)
+      local handled = M.handle_locations(locations)
+      if not handled then
+        return vim.lsp.handlers['textDocument/definition'](err, result, ctx, config)
+      end
+    end
   end
 
   local locations = M.textdocument_definition_to_locations(result)
-
-  local passthrough
-
-  local fetching_metadata = M.get_metadata(locations)
-
-  if fetching_metadata then
-    return vim.NIL
-  else
+  local handled = M.handle_locations(locations)
+  if not handled then
     return vim.lsp.handlers['textDocument/definition'](err, result, ctx, config)
   end
 end
