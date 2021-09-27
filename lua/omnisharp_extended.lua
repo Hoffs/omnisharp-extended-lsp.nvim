@@ -87,6 +87,10 @@ M.get_metadata = function(locations)
       local result, err = client.request_sync('o#/metadata', params, 10000)
       if not err then
         local bufnr, name = M.buf_from_metadata(result.result, client.id)
+        -- change location name to the one returned from metadata
+        -- alternative is to open buffer under location uri
+        -- not sure which one is better
+        loc.uri = 'file://' .. name
         fetched[loc.uri] = {
           bufnr = bufnr,
           range = loc.range,
