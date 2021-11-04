@@ -26,12 +26,22 @@ To use this plugin all that needs to be done is for the nvim lsp handler for
 
 If using `lspconfig` this can be done like this:
 
+First configure omnisharp as per [nvim-lspconfig](https://github.com/neovim/nvim-lspconfig/blob/master/CONFIG.md#omnisharp).
+
+Then to that config add `handlers` with custom handler from this plugin.
+
 ```lua
+local pid = vim.fn.getpid()
+-- On linux/darwin if using a release build, otherwise under scripts/OmniSharp(.Core)(.cmd)
+local omnisharp_bin = "/path/to/omnisharp-repo/run"
+-- on Windows
+-- local omnisharp_bin = "/path/to/omnisharp/OmniSharp.exe"
+
 local config = {
   handlers = {
     ["textDocument/definition"] = require('omnisharp_extended').handler,
   },
-  cmd = { run_path, '--languageserver' , '--hostPID', tostring(pid) },
+  cmd = { omnisharp_bin, '--languageserver' , '--hostPID', tostring(pid) },
   -- rest of your settings
 }
 
