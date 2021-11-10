@@ -21,6 +21,19 @@ is handled as as described above.
 
 ## Usage
 
+Since some functionality is missing in 0.5.1 heres a table with provided
+functions and for which versions they can be used:
+
+| Command  | Neovim 0.5.1 | Neovim Nightly |
+| ------------- | ------------- | ------------- |
+| vim.lsp.buf.definition() with updated global handlers  | Not working  | OK |
+| require('omnisharp_extended').lsp_definitions()  | OK  | OK (but unnecessary) |
+| require('omnisharp_extended').telescope_lsp_definitions()  | OK  | OK |
+
+See below for instructions based on version.
+
+### For Neovim **nightly**
+
 To use this plugin all that needs to be done is for the nvim lsp handler for
 `textDocument/definition` be overriden with one provided by this plugin.
 
@@ -46,6 +59,17 @@ local config = {
 }
 
 require'lspconfig'.omnisharp.setup(config)
+```
+
+### For Neovim 0.5.1
+
+Due to the fact that in 0.5.1 request params are not available is handler
+response a function to go to definitions has to be invoked manually. One option is to use
+telescope method explained in the next section or to use `lsp_definitions()` function which
+mimics standard definitions behavior.
+
+```vimscript
+nnoremap gd <cmd>lua require('omnisharp_extended').lsp_definitions()<cr>
 ```
 
 ### Telescope

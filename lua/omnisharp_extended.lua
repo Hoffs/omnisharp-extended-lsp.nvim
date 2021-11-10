@@ -259,11 +259,27 @@ end
 M.telescope_lsp_definitions = function(opts)
   local client = M.get_omnisharp_client()
   if client then
+    local params = vim.lsp.util.make_position_params()
+
     local handler = function(err, result, ctx, config)
+      ctx.params = params
       M.handler_telescope(err, result, ctx, config, opts)
     end
 
+    client.request('textDocument/definition', params, handler)
+  end
+end
+
+M.lsp_definitions = function(opts)
+  local client = M.get_omnisharp_client()
+  if client then
     local params = vim.lsp.util.make_position_params()
+
+    local handler = function(err, result, ctx, config)
+      ctx.params = params
+      M.handler(err, result, ctx, config, opts)
+    end
+
     client.request('textDocument/definition', params, handler)
   end
 end
