@@ -45,8 +45,13 @@ M.buf_from_metadata = function(result, client_id)
   -- this will be /$metadata$/...
   local bufnr = utils.get_or_create_buf(file_name)
   -- TODO: check if bufnr == 0 -> error
+  vim.api.nvim_buf_set_option(bufnr, 'modifiable', true)
+  vim.api.nvim_buf_set_option(bufnr, 'readonly', false)
   vim.api.nvim_buf_set_lines(bufnr, 0, -1, true, source_lines)
+  vim.api.nvim_buf_set_option(bufnr, 'modifiable', false)
+  vim.api.nvim_buf_set_option(bufnr, 'readonly', true)
   vim.api.nvim_buf_set_option(bufnr, 'filetype', 'cs')
+  vim.api.nvim_buf_set_option(bufnr, 'modified', false)
 
   -- attach lsp client ??
   vim.lsp.buf_attach_client(bufnr, client_id)
