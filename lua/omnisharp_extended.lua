@@ -10,10 +10,11 @@ local M = {}
 
 M.defolderize = function(str)
 -- private static string Folderize(string path) => string.Join("/", path.Split('.'));
-  return string.gsub(str, '/', '.')
+  return string.gsub(str, '[/\\]', '.')
 end
 
-M.matcher = '%$metadata%$/Project/(.*)/Assembly/(.*)/Symbol/(.*).cs$'
+M.matcher = '%$metadata%$[/\\]Project[/\\](.*)[/\\]Assembly[/\\](.*)[/\\]Symbol[/\\](.*).cs$'
+M.matcher_meta_uri = '(%$metadata%$[/\\].*)$'
 
 M.parse_meta_uri = function(uri)
   local found, _, project, assembly, symbol = string.find(uri, M.matcher)
@@ -40,7 +41,9 @@ M.buf_from_metadata = function(result, client_id)
   local normalized = string.gsub(result.Source, '\r\n', '\n')
   local source_lines = utils.split(normalized, '\n')
 
-  local file_name = '/' .. result.SourceName
+  -- normalize backwards slash to forwards slash
+  local normalized_source_name = string.gsub(result.SourceName, '\\', '/')
+  local file_name = '/' .. normalized_source_name
 
   -- this will be /$metadata$/...
   local bufnr = utils.get_or_create_buf(file_name)
@@ -171,8 +174,15 @@ M.handler = function(err, result, ctx, config)
     -- if request was from metadata document,
     -- repeat it with /gotodefinition since that supports metadata
     -- documents properly ( https://github.com/OmniSharp/omnisharp-roslyn/issues/2238 )
+
+    -- use regex to get file uri. On windows there might be extra path things added before $metadata$ due to path semantics.
+    local found, _, file_uri = string.find(ctx.params.textDocument.uri, M.matcher_meta_uri)
+    if not found then
+      return
+    end
+
     local params = {
-      fileName = string.gsub(ctx.params.textDocument.uri, 'file:///', ''),
+      fileName = file_uri,
       column = ctx.params.position.character,
       line = ctx.params.position.line,
     }
@@ -238,8 +248,15 @@ M.handler_telescope = function(err, result, ctx, config, opts)
     -- if request was from metadata document,
     -- repeat it with /gotodefinition since that supports metadata
     -- documents properly ( https://github.com/OmniSharp/omnisharp-roslyn/issues/2238 )
+
+    -- use regex to get file uri. On windows there might be extra path things added before $metadata$ due to path semantics.
+    local found, _, file_uri = string.find(ctx.params.textDocument.uri, M.matcher_meta_uri)
+    if not found then
+      return
+    end
+
     local params = {
-      fileName = string.gsub(ctx.params.textDocument.uri, 'file:///', ''),
+      fileName = file_uri,
       column = ctx.params.position.character,
       line = ctx.params.position.line,
     }
