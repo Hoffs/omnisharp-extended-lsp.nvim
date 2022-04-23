@@ -32,7 +32,21 @@ functions and for which versions they can be used:
 
 See below for instructions based on version.
 
-### For Neovim **nightly**
+### OmniSharp settings
+
+For decompilation to work, OmniSharp extension for decompilation support might need to be enabled.
+See [omnisharp wiki](https://github.com/OmniSharp/omnisharp-roslyn/wiki/Configuration-Options) for
+information where `omnisharp.json` needs to be placed (`~/.omnisharp/omnisharp.json`).
+
+```json
+{
+  "RoslynExtensionsOptions": {
+    "enableDecompilationSupport": true
+  }
+}
+```
+
+### For Neovim **nightly** (0.6 or later)
 
 To use this plugin all that needs to be done is for the nvim lsp handler for
 `textDocument/definition` be overriden with one provided by this plugin.
