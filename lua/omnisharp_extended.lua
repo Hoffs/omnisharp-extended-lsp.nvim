@@ -158,7 +158,8 @@ M.handle_locations = function(locations)
       return true
     else
       -- utils.jump_to_location(locations[1], fetched[locations[1].uri].bufnr)
-      vim.lsp.util.jump_to_location(locations[1])
+      local offset_encoding = M.get_omnisharp_client().offset_encoding
+      vim.lsp.util.jump_to_location(locations[1], offset_encoding)
       return true
     end
   else
@@ -215,6 +216,7 @@ M.handle_locations_telescope = function(locations, opts)
 
   local fetched = M.get_metadata(locations)
 
+  local offset_encoding = M.get_omnisharp_client().offset_encoding
   if #locations == 0 then
     return
   elseif #locations == 1 and opts.jump_type ~= "never" then
@@ -225,9 +227,9 @@ M.handle_locations_telescope = function(locations, opts)
     elseif opts.jump_type == "vsplit" then
       vim.cmd "vnew"
     end
-    vim.lsp.util.jump_to_location(locations[1])
+    vim.lsp.util.jump_to_location(locations[1], offset_encoding)
   else
-    local locations = vim.lsp.util.locations_to_items(locations)
+    local locations = vim.lsp.util.locations_to_items(locations, offset_encoding)
     pickers.new(opts, {
       prompt_title = title,
       finder = finders.new_table {
@@ -281,7 +283,7 @@ end
 M.telescope_lsp_definitions = function(opts)
   local client = M.get_omnisharp_client()
   if client then
-    local params = vim.lsp.util.make_position_params()
+    local params = vim.lsp.util.make_position_params(0, client.offset_encoding)
 
     local handler = function(err, result, ctx, config)
       ctx.params = params
@@ -295,7 +297,7 @@ end
 M.lsp_definitions = function(opts)
   local client = M.get_omnisharp_client()
   if client then
-    local params = vim.lsp.util.make_position_params()
+    local params = vim.lsp.util.make_position_params(0, client.offset_encoding)
 
     local handler = function(err, result, ctx, config)
       ctx.params = params
