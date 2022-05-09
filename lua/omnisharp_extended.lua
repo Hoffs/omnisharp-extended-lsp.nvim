@@ -1,6 +1,5 @@
-local log = require('omnisharp_extended/log')
 local utils = require('omnisharp_extended/utils')
-local lsp_util = require 'vim.lsp.util'
+local make_entry = require "telescope.make_entry"
 
 local pickers = require "telescope.pickers"
 local finders = require "telescope.finders"
@@ -22,19 +21,15 @@ M.parse_meta_uri = function(uri)
   if found then
     return found, M.defolderize(project), M.defolderize(assembly), M.defolderize(symbol)
   end
-
-  return
 end
 
 M.get_omnisharp_client = function()
   local clients = vim.lsp.buf_get_clients(0)
-  for id, client in pairs(clients) do
+  for _, client in pairs(clients) do
     if client.name == "omnisharp" then
       return client
     end
   end
-
-  return
 end
 
 M.buf_from_metadata = function(result, client_id)
@@ -82,7 +77,6 @@ M.get_metadata = function(locations)
     local is_meta, project, assembly, symbol = M.parse_meta_uri(uri)
 
     if is_meta then
-      required_metadata = true
       local params = {
         timeout = 5000,
         assemblyName = assembly,
@@ -118,7 +112,7 @@ M.definitions_to_locations = function(definitions)
   end
 
   local locations = {}
-  for i, definition in pairs(definitions) do
+  for _, definition in pairs(definitions) do
     local range = {}
     range['start'] = {
       line = definition.Location.Range.Start.Line,
@@ -190,7 +184,7 @@ M.handler = function(err, result, ctx, config)
 
     local client = M.get_omnisharp_client()
     if client then
-      local result, err = client.request_sync('o#/v2/gotodefinition', params, 10000)
+      result, err = client.request_sync('o#/v2/gotodefinition', params, 10000)
       if err then
         vim.api.nvim_err_writeln('Error when executing ' .. 'o#/v2/gotodefinition' .. ' : ' .. err)
         return
@@ -214,8 +208,6 @@ end
 M.handle_locations_telescope = function(locations, opts)
   opts = opts or {}
 
-  local fetched = M.get_metadata(locations)
-
   local offset_encoding = M.get_omnisharp_client().offset_encoding
   if #locations == 0 then
     return
@@ -229,9 +221,9 @@ M.handle_locations_telescope = function(locations, opts)
     end
     vim.lsp.util.jump_to_location(locations[1], offset_encoding)
   else
-    local locations = vim.lsp.util.locations_to_items(locations, offset_encoding)
+    locations = vim.lsp.util.locations_to_items(locations, offset_encoding)
     pickers.new(opts, {
-      prompt_title = title,
+      prompt_title = "LSP Definitions",
       finder = finders.new_table {
         results = locations,
         entry_maker = opts.entry_maker or make_entry.gen_from_quickfix(opts),
@@ -242,7 +234,7 @@ M.handle_locations_telescope = function(locations, opts)
   end
 end
 
-M.handler_telescope = function(err, result, ctx, config, opts)
+M.handler_telescope = function(err, result, ctx, _)
   -- If definition request is made from meta document, then it SHOULD
   -- always return no results.
   local req_from_meta = M.parse_meta_uri(ctx.params.textDocument.uri)
@@ -265,7 +257,7 @@ M.handler_telescope = function(err, result, ctx, config, opts)
 
     local client = M.get_omnisharp_client()
     if client then
-      local result, err = client.request_sync('o#/v2/gotodefinition', params, 10000)
+      result, err = client.request_sync('o#/v2/gotodefinition', params, 10000)
       if err then
         vim.api.nvim_err_writeln('Error when executing ' .. 'o#/v2/gotodefinition' .. ' : ' .. err)
         return
@@ -280,28 +272,28 @@ M.handler_telescope = function(err, result, ctx, config, opts)
   M.handle_locations_telescope(locations)
 end
 
-M.telescope_lsp_definitions = function(opts)
+M.telescope_lsp_definitions = function()
   local client = M.get_omnisharp_client()
   if client then
     local params = vim.lsp.util.make_position_params(0, client.offset_encoding)
 
     local handler = function(err, result, ctx, config)
       ctx.params = params
-      M.handler_telescope(err, result, ctx, config, opts)
+      M.handler_telescope(err, result, ctx, config)
     end
 
     client.request('textDocument/definition', params, handler)
   end
 end
 
-M.lsp_definitions = function(opts)
+M.lsp_definitions = function()
   local client = M.get_omnisharp_client()
   if client then
     local params = vim.lsp.util.make_position_params(0, client.offset_encoding)
 
     local handler = function(err, result, ctx, config)
       ctx.params = params
-      M.handler(err, result, ctx, config, opts)
+      M.handler(err, result, ctx, config)
     end
 
     client.request('textDocument/definition', params, handler)
