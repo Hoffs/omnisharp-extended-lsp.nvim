@@ -36,7 +36,7 @@ U.get_or_create_buf = function(name)
     -- in buffer name. On Windows nvim_buf_set_name might change the buffer name and include some stuff before.
     if string.find(name, '^/%$metadata%$/.*$') then
       local normalized_bufname = string.gsub(bufname, '\\', '/')
-      if string.find(normalized_bufname, name) or normalized_bufname == name then
+      if string.find(normalized_bufname, name, 1, true) then
         return buf
       end
     else
