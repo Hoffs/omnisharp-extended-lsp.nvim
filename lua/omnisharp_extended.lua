@@ -206,6 +206,8 @@ end
 
 M.handle_locations_telescope = function(locations, offset_encoding, opts)
   opts = opts or {}
+
+  local fetched = M.get_metadata(locations)
   if #locations == 0 then
     return
   elseif #locations == 1 and opts.jump_type ~= "never" then
