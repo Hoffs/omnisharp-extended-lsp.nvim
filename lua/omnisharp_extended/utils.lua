@@ -51,8 +51,7 @@ U.get_or_create_buf = function(name)
   return bufnr
 end
 
-U.set_qflist_locations = function(locations)
-  local offset_encoding = require('omnisharp_extended').get_omnisharp_client().offset_encoding
+U.set_qflist_locations = function(locations, offset_encoding)
   local items = vim.lsp.util.locations_to_items(locations, offset_encoding)
   vim.fn.setqflist({}, ' ', {
     title = 'Language Server';
