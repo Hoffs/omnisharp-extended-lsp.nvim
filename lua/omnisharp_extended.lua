@@ -184,7 +184,7 @@ M.handler = function(err, result, ctx, config)
 
     local client = M.get_omnisharp_client()
     if client then
-      result, err = client.request_sync('o#/v2/gotodefinition', params, 10000)
+      local result, err = client.request_sync('o#/v2/gotodefinition', params, 10000)
       if err then
         vim.api.nvim_err_writeln('Error when executing ' .. 'o#/v2/gotodefinition' .. ' : ' .. err)
         return
@@ -257,7 +257,7 @@ M.handler_telescope = function(err, result, ctx, _)
 
     local client = M.get_omnisharp_client()
     if client then
-      result, err = client.request_sync('o#/v2/gotodefinition', params, 10000)
+      local result, err = client.request_sync('o#/v2/gotodefinition', params, 10000)
       if err then
         vim.api.nvim_err_writeln('Error when executing ' .. 'o#/v2/gotodefinition' .. ' : ' .. err)
         return
