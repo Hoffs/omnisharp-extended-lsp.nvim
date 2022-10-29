@@ -1,9 +1,15 @@
 local utils = require('omnisharp_extended/utils')
-local make_entry = require "telescope.make_entry"
 
-local pickers = require "telescope.pickers"
-local finders = require "telescope.finders"
-local conf = require("telescope.config").values
+local pickers = nil
+local finders = nil
+local conf = nil
+local telescope_exists, make_entry = pcall(require, "telescope.make_entry");
+if telescope_exists then
+  pickers = require "telescope.pickers"
+  finders = require "telescope.finders"
+  conf = require("telescope.config").values
+end
+
 
 local M = {}
 
@@ -272,6 +278,10 @@ M.handler_telescope = function(err, result, ctx, _)
 end
 
 M.telescope_lsp_definitions = function()
+  if not telescope_exists then
+    error("Telescope is not available, this function only works with Telescope.")
+  end
+
   local client = M.get_omnisharp_client()
   if client then
     local params = vim.lsp.util.make_position_params(0, client.offset_encoding)
