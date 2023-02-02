@@ -32,7 +32,7 @@ end
 M.get_omnisharp_client = function()
   local clients = vim.lsp.buf_get_clients(0)
   for _, client in pairs(clients) do
-    if client.name == "omnisharp" then
+    if client.name == "omnisharp" or client.name == "omnisharp_mono" then
       return client
     end
   end
