@@ -70,4 +70,9 @@ U.jump_to_location = function(location, bufnr)
   vim.api.nvim_win_set_cursor(0, { location.range.start.line+1, location.range.start.character })
 end
 
+U.file_exists = function(name)
+   local f = io.open(name, 'r')
+   if f ~= nil then io.close(f) return true else return false end
+end
+
 return U
