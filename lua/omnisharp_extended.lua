@@ -157,10 +157,6 @@ o#/sourcegeneratedfile
     }
 --]]
 
--- Options:
--- 1. Optimal approach - request using o#/v2/gotodefinition and handle response
--- 2. Sub-optimal approach - look if response contains $metadata$ or non-existant files, if yes - repeat using 1st option.
-
 local M = {}
 
 M.get_omnisharp_client = function()
@@ -251,6 +247,7 @@ M.handle_gotodefinition = function(err, result, ctx, config)
       end
     end
 
+    -- remap definition to nvim lsp location
     local range = {}
     range['start'] = {
       line = definition.Location.Range.Start.Line,
@@ -275,119 +272,19 @@ M.handle_gotodefinition = function(err, result, ctx, config)
     table.insert(locations, location)
   end
 
-
-  return locations
-  -- invoke underlying handler
-  if #locations > 1 then
-    utils.set_qflist_locations(locations, lsp_client.offset_encoding)
-    vim.api.nvim_command("copen")
-    return true
-  else
-    vim.lsp.util.jump_to_location(locations[1], lsp_client.offset_encoding)
-    return true
-  end
-end
-
-
-M.defolderize = function(str)
--- private static string Folderize(string path) => string.Join("/", path.Split('.'));
-  return string.gsub(str, '[/\\]', '.')
-end
-
-M.matcher = '%$metadata%$[/\\]Project[/\\](.*)[/\\]Assembly[/\\](.*)[/\\]Symbol[/\\](.*).cs$'
-M.matcher_meta_uri = '(%$metadata%$[/\\].*)$'
-
-M.parse_meta_uri = function(uri)
-  local found, _, project, assembly, symbol = string.find(uri, M.matcher)
-
-  if found then
-    return found, M.defolderize(project), M.defolderize(assembly), M.defolderize(symbol)
-  end
-end
-
--- Gets metadata for all locations with $metadata$
--- Returns map of fetched files.
-M.get_metadata = function(locations)
-  local client = M.get_omnisharp_client()
-  if not client then
-    -- TODO: Error?
-    return false
-  end
-
-  local fetched = {}
-  for _, loc in pairs(locations) do
-    local uri = utils.urldecode(loc.uri)
-    local is_meta, project, assembly, symbol = M.parse_meta_uri(uri)
-
-    if is_meta then
-      local params = {
-        timeout = 5000,
-        assemblyName = assembly,
-        projectName = project,
-        typeName = symbol,
-      }
-
-      -- request_sync?
-      -- if async, need to trigger when all are finished
-      local result, err = client.request_sync('o#/metadata', params, 10000)
-        if not err and result.result.Source == nil then
-          print("No definition found")
-          return nil
-        end
-        if not err and result.result.Source ~= nil then
-        local bufnr, name = M.buf_from_metadata(result.result, client.id)
-        -- change location name to the one returned from metadata
-        -- alternative is to open buffer under location uri
-        -- not sure which one is better
-        loc.uri = 'file://' .. name
-        fetched[loc.uri] = {
-          bufnr = bufnr,
-          range = loc.range,
-        }
-      end
-    end
-  end
-
-  return fetched
-end
-
-M.definitions_to_locations = function(definitions)
-  -- translate definitions to locations
-  -- https://github.com/OmniSharp/omnisharp-roslyn/blob/master/src/OmniSharp.LanguageServerProtocol/Handlers/OmniSharpDefinitionHandler.cs#L44
-  if definitions == nil then
-    return nil
-  end
-
-  local locations = {}
-  for _, definition in pairs(definitions) do
-    local range = {}
-    range['start'] = {
-      line = definition.Location.Range.Start.Line,
-      character = definition.Location.Range.Start.Column,
-    }
-    range['end'] = {
-      line = definition.Location.Range.End.Line,
-      character = definition.Location.Range.End.Column,
-    }
-
-    local fileName = definition.Location.FileName
-
-    if fileName[1] ~= '/' then
-      fileName = '/' .. fileName
-    end
-
-    local location = {
-      uri = 'file://' .. fileName,
-      range = range
-    }
-
-    table.insert(locations, location)
-  end
-
   return locations
 end
 
-M.textdocument_definition_to_locations = function(result)
+M.file_name_for_gotodefinition = function(file_name)
+  local file_name = string.gsub(file_name, 'file://', '')
+  if string.find(file_name, '^/%$metadata%$/.*$') then
+    file_name = file_name:sub(2)
+  end
+
+  return file_name
+end
+
+M.textdocument_definition_flatten = function(result)
   if not vim.tbl_islist(result) then
     return { result }
   end
@@ -395,77 +292,37 @@ M.textdocument_definition_to_locations = function(result)
   return result
 end
 
--- Takes received locations and tries to load buffers for referenced metadata files.
--- If locations did not contain metadata files, false is returned, indicating that handler did not do anything.
-M.handle_locations = function(locations, offset_encoding)
-  local fetched = M.get_metadata(locations)
+M.has_meta_or_sourcegen = function(result)
+  local result = M.textdocument_definition_flatten(result)
+  for _, definition in ipairs(result) do
+    local file_name = string.gsub(definition.uri, 'file://', '')
+    local is_metadata = string.find(file_name, '^/%$metadata%$/.*$')
+    -- not sure how else to check for sourcegen file
+    local exists = utils.file_exists(file_name)
 
-  if fetched == nil then
-    return true end
-  if not vim.tbl_isempty(fetched) then
-    if #locations > 1 then
-      utils.set_qflist_locations(locations, offset_encoding)
-      vim.api.nvim_command("copen")
-      return true
-    else
-      -- utils.jump_to_location(locations[1], fetched[locations[1].uri].bufnr)
-      vim.lsp.util.jump_to_location(locations[1], offset_encoding)
+    if is_metadata or not exists then
       return true
     end
-  else
-    return false
   end
 end
 
+-- Retries definition command using custom logic if result contains "special" files
 M.handler = function(err, result, ctx, config)
-  -- If definition request is made from meta document, then it SHOULD
-  -- always return no results.
   local client = M.get_omnisharp_client()
-  local req_from_meta = M.parse_meta_uri(ctx.params.textDocument.uri)
-  if req_from_meta then
-    -- if request was from metadata document,
-    -- repeat it with /gotodefinition since that supports metadata
-    -- documents properly ( https://github.com/OmniSharp/omnisharp-roslyn/issues/2238 )
-
-    -- use regex to get file uri. On windows there might be extra path things added before $metadata$ due to path semantics.
-    local found, _, file_uri = string.find(ctx.params.textDocument.uri, M.matcher_meta_uri)
-    if not found then
-      return
-    end
-
-    local params = {
-      fileName = file_uri,
-      column = ctx.params.position.character,
-      line = ctx.params.position.line,
-    }
-
-    if client then
-      local result, err = client.request_sync('o#/v2/gotodefinition', params, 10000)
-      if err then
-        vim.api.nvim_err_writeln('Error when executing ' .. 'o#/v2/gotodefinition' .. ' : ' .. err)
-        return
-      end
-
-      local locations = M.definitions_to_locations(result.result.Definitions)
-      local handled = M.handle_locations(locations, client.offset_encoding)
-      if not handled then
-        return vim.lsp.handlers['textDocument/definition'](err, result, ctx, config)
-      end
-    end
-  end
-
-
-  local locations = M.textdocument_definition_to_locations(result)
-  local handled = M.handle_locations(locations, client.offset_encoding)
-  if not handled then
+  if M.has_meta_or_sourcegen(result) or string.find(ctx.params.textDocument.uri, '^file:///%$metadata%$/.*$') then
+    M.lsp_definitions()
+  else
     return vim.lsp.handlers['textDocument/definition'](err, result, ctx, config)
   end
 end
 
-M.handle_locations_telescope = function(locations, offset_encoding, opts)
+M.telescope_lsp_definitions_handler = function(err, result, ctx, config, opts)
   opts = opts or {}
+  local lsp_client = vim.lsp.get_client_by_id(ctx.client_id)
+  local locations = M.handle_gotodefinition(err, result, ctx, config)
 
-  local fetched = M.get_metadata(locations)
+  -- not sure how to handle telescope options
+
   if #locations == 0 then
     return
   elseif #locations == 1 and opts.jump_type ~= "never" then
@@ -476,9 +333,9 @@ M.handle_locations_telescope = function(locations, offset_encoding, opts)
     elseif opts.jump_type == "vsplit" then
       vim.cmd "vnew"
     end
-    vim.lsp.util.jump_to_location(locations[1], offset_encoding)
+    vim.lsp.util.jump_to_location(locations[1], lsp_client.offset_encoding)
   else
-    locations = vim.lsp.util.locations_to_items(locations, offset_encoding)
+    locations = vim.lsp.util.locations_to_items(locations, lsp_client.offset_encoding)
     pickers.new(opts, {
       prompt_title = "LSP Definitions",
       finder = finders.new_table {
@@ -491,53 +348,6 @@ M.handle_locations_telescope = function(locations, offset_encoding, opts)
   end
 end
 
-M.handler_telescope = function(err, result, ctx, _, opts)
-  -- If definition request is made from meta document, then it SHOULD
-  -- always return no results.
-  local client = M.get_omnisharp_client()
-  local req_from_meta = M.parse_meta_uri(ctx.params.textDocument.uri)
-  if req_from_meta then
-    -- if request was from metadata document,
-    -- repeat it with /gotodefinition since that supports metadata
-    -- documents properly ( https://github.com/OmniSharp/omnisharp-roslyn/issues/2238 )
-
-    -- use regex to get file uri. On windows there might be extra path things added before $metadata$ due to path semantics.
-    local found, _, file_uri = string.find(ctx.params.textDocument.uri, M.matcher_meta_uri)
-    if not found then
-      return
-    end
-
-    local params = {
-      fileName = file_uri,
-      column = ctx.params.position.character,
-      line = ctx.params.position.line,
-    }
-
-    if client then
-      local result, err = client.request_sync('o#/v2/gotodefinition', params, 10000)
-      if err then
-        vim.api.nvim_err_writeln('Error when executing ' .. 'o#/v2/gotodefinition' .. ' : ' .. err)
-        return
-      end
-
-      local locations = M.definitions_to_locations(result.result.Definitions)
-      M.handle_locations_telescope(locations, client.offset_encoding, opts)
-    end
-  end
-
-
-  local testparams = {
-    fileName = string.gsub(ctx.params.textDocument.uri, 'file://', '') ,
-    column = ctx.params.position.character,
-    line = ctx.params.position.line,
-  }
-
-  local _, __ = client.request_sync('o#/v2/gotodefinition', testparams, 10000)
-
-  local locations = M.textdocument_definition_to_locations(result)
-  M.handle_locations_telescope(locations, client.offset_encoding, opts)
-end
-
 M.telescope_lsp_definitions = function(opts)
   if not telescope_exists then
     error("Telescope is not available, this function only works with Telescope.")
@@ -546,13 +356,35 @@ M.telescope_lsp_definitions = function(opts)
   local client = M.get_omnisharp_client()
   if client then
     local params = vim.lsp.util.make_position_params(0, client.offset_encoding)
+    local gotodefinitionParams = {
+      fileName = M.file_name_for_gotodefinition(params.textDocument.uri),
+      column = params.position.character,
+      line = params.position.line,
+    }
 
-    local handler = function(err, result, ctx, config)
-      ctx.params = params
-      M.handler_telescope(err, result, ctx, config, opts)
+    -- If invoked with telescope options, create closure that passes opts to real handler
+    local handler = M.telescope_lsp_definitions_handler
+    if opts then
+      handler = function(err, result, ctx, config)
+        M.telescope_lsp_definitions_handler(err, result, ctx, config, opts)
+      end
     end
 
-    client.request('textDocument/definition', params, handler)
+    client.request('o#/v2/gotodefinition', gotodefinitionParams, handler)
+  end
+end
+
+M.lsp_definitions_handler = function(err, result, ctx, config)
+  local lsp_client = vim.lsp.get_client_by_id(ctx.client_id)
+  local locations = M.handle_gotodefinition(err, result, ctx, config)
+
+  if #locations > 1 then
+    utils.set_qflist_locations(locations, lsp_client.offset_encoding)
+    vim.api.nvim_command("copen")
+    return true
+  else
+    vim.lsp.util.jump_to_location(locations[1], lsp_client.offset_encoding)
+    return true
   end
 end
 
@@ -560,33 +392,13 @@ M.lsp_definitions = function()
   local client = M.get_omnisharp_client()
   if client then
     local params = vim.lsp.util.make_position_params(0, client.offset_encoding)
-
-    local handler = function(err, result, ctx, config)
-      ctx.params = params
-      M.handler(err, result, ctx, config)
-    end
-
-    client.request('textDocument/definition', params, handler)
-  end
-end
-
-M.lsp_definitions_v2 = function()
-  local client = M.get_omnisharp_client()
-  if client then
-    local params = vim.lsp.util.make_position_params(0, client.offset_encoding)
-
-    local handler = function(err, result, ctx, config)
-      ctx.params = params
-      M.handle_gotodefinition(err, result, ctx, config)
-    end
-
     local gotodefinitionParams = {
-      fileName = string.gsub(params.textDocument.uri, 'file://', ''),
+      fileName = M.file_name_for_gotodefinition(params.textDocument.uri),
       column = params.position.character,
       line = params.position.line,
     }
 
-    client.request('o#/v2/gotodefinition', gotodefinitionParams, handler)
+    client.request('o#/v2/gotodefinition', gotodefinitionParams, M.lsp_definitions_handler)
   end
 end
 

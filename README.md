@@ -1,36 +1,28 @@
 # omnisharp-extended-lsp.nvim
 
-Extended `textDocument/definition` handler that handles assembly/decompilation
-loading for `$metadata$` documents.
+Extended `textDocument/definition` handler/command that handles assembly/decompilation loading for `$metadata$` and source generated documents.
 
 ## How it works
 
-By providing an alternate handler for `textDocument/definition` the plugin listens
-to all responses and if it receives URI with `$metadata$` it will call custom
-omnisharp endpoint `o#/metadata` which returns full document source. This source
-is then loaded as a scratch buffer with name set to `/$metadata$/..`. This allows
-then allows jumping to the buffer based on name or from quickfix list, because it's
-loaded.
+There are 2 ways to use the plugin, using custom command or overriding lsp handler.
 
-Definitions from within `$metadata$` documents also work, though require 1 more
-additional request per definition, [since as it is right now, `textDocument/definition`
-doesn't properly return results when called from `$metadata$` document](https://github.com/OmniSharp/omnisharp-roslyn/issues/2238).
-Because of that, this plugin additionally on response checks if request was made from `$metadata$` and
-does another request to `o#/v2/gotodefinition` which works properly. Response from this
-is handled as as described above.
+### Custom command (*Optimal*)
+
+Using `require('omnisharp_extended').lsp_definitions()` instead of `vim.lsp.buf.definition()`.
+
+This will call omnisharp lsp using `o#/v2/gotodefinition` command instead of standard `textDocument/definition` command. Omnisharp command natively provides information about metadata files (decompiled assemblies and such) and source generated files. If results contain any of these files, the handler will then try to create read-only buffers before bringing up quickfix list or navigating to single result.
+
+### Custom handler (*Suboptimal*)
+
+Using custom lsp handler `require('omnisharp_extended').handler` when configuring lsp.
+
+Custom handler is invoked for results of `vim.lsp.buf.definition()` commands. The handler then checks the results and if it determines that the result may contain "special" files (metadata, source genereated) or that request was made from within metadata file, it will retry the request using `Custom command` method, as explained above. Meaning that in certain cases, this will do more than 1 definition request to lsp server.
+
+Related issue: https://github.com/OmniSharp/omnisharp-roslyn/issues/2238
 
 ## Usage
 
-Since some functionality is missing in 0.5.1 heres a table with provided
-functions and for which versions they can be used:
-
-| Command  | Neovim 0.5.1 | Neovim Nightly |
-| ------------- | ------------- | ------------- |
-| vim.lsp.buf.definition() with updated global handlers  | Not working  | OK |
-| require('omnisharp_extended').lsp_definitions()  | OK  | OK (but unnecessary) |
-| require('omnisharp_extended').telescope_lsp_definitions()  | OK  | OK |
-
-See below for instructions based on version.
+Tested with Neovim 0.8.3
 
 ### OmniSharp settings
 
@@ -46,16 +38,21 @@ information where `omnisharp.json` needs to be placed (`~/.omnisharp/omnisharp.j
 }
 ```
 
-### For Neovim **nightly** (0.6 or later)
+### Custom command setup
 
-To use this plugin all that needs to be done is for the nvim lsp handler for
-`textDocument/definition` be overriden with one provided by this plugin.
+Simply setup a desired keymap to invoke definition command:
 
-If using `lspconfig` this can be done like this:
+```vimscript
+nnoremap gd <cmd>lua require('omnisharp_extended').lsp_definitions()<cr>
+```
+
+### Custom handler setup
+
+To use this plugin with custom lsp handler, `textDocument/definition` handler has to be overriden with the one provided by this plugin.
 
 First configure omnisharp as per [nvim-lspconfig](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#omnisharp).
 
-Then to that config add `handlers` with custom handler from this plugin.
+Then to that config add `handlers` with custom handler from this plugin:
 
 ```lua
 local pid = vim.fn.getpid()
@@ -75,17 +72,6 @@ local config = {
 require'lspconfig'.omnisharp.setup(config)
 ```
 
-### For Neovim 0.5.1
-
-Due to the fact that in 0.5.1 request params are not available is handler
-response a function to go to definitions has to be invoked manually. One option is to use
-telescope method explained in the next section or to use `lsp_definitions()` function which
-mimics standard definitions behavior.
-
-```vimscript
-nnoremap gd <cmd>lua require('omnisharp_extended').lsp_definitions()<cr>
-```
-
 ### Telescope
 
 This handler can also be used for [nvim-telescope](https://github.com/nvim-telescope/telescope.nvim):
@@ -96,4 +82,6 @@ nnoremap gd <cmd>lua require('omnisharp_extended').telescope_lsp_definitions()<c
 
 ## Important notes
 
-- !! Plugin searches for LSP server configured with the name `omnisharp`, so if your server is configured using a different name, this will not work out of the box.
+- Plugin searches for LSP server configured with the name `omnisharp` or `omnisharp_mono`, so if your server is configured using a different name, this will not work out of the box.
+- Navigation from within source generated files does not seem to be supported by omnisharp itself. Source generated files are technically identified by 2 UUID's, but gotodefinition expects a file name, so technically these 2 can't map to each other. Maybe in the future omnisharp devs will think of a way to make this work.
+- Telescope preview does not work for "special" files as they are not actually accessible files. It should be possible to modify `buffer_previewer_maker` to handle this, but currently out of scope.
