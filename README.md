@@ -1,6 +1,6 @@
 # omnisharp-extended-lsp.nvim
 
-Extended `textDocument/definition` handler/command that handles assembly/decompilation loading for `$metadata$` and source generated documents.
+Extended `textDocument/definition` and `textDocument/references` handler/command that handles assembly/decompilation loading for `$metadata$` and source generated documents.
 
 ## How it works
 
@@ -12,11 +12,17 @@ Using `require('omnisharp_extended').lsp_definitions()` instead of `vim.lsp.buf.
 
 This will call omnisharp lsp using `o#/v2/gotodefinition` command instead of standard `textDocument/definition` command. Omnisharp command natively provides information about metadata files (decompiled assemblies and such) and source generated files. If results contain any of these files, the handler will then try to create read-only buffers before bringing up quickfix list or navigating to single result.
 
+Using `require('omnisharp_extended').lsp_references()` instead of `vim.lsp.buf.references()`.
+
+References replacement works in similar fashion as well. It will call `o#/findusage` command instead of standard `textDocument/references` command. It also provides information about source generated files, so if such file is encountered, it will be loaded before selection is shown.
+
 ### Custom handler (*Suboptimal*)
 
-Using custom lsp handler `require('omnisharp_extended').handler` when configuring lsp.
+Using custom lsp handler `require('omnisharp_extended').handler` when configuring lsp for `textDocument/definition` or `require('omnisharp_extended').references_handler` for `textDocument/references`.
 
 Custom handler is invoked for results of `vim.lsp.buf.definition()` commands. The handler then checks the results and if it determines that the result may contain "special" files (metadata, source genereated) or that request was made from within metadata file, it will retry the request using `Custom command` method, as explained above. Meaning that in certain cases, this will do more than 1 definition request to lsp server.
+
+References handler works in identical manner.
 
 Related issue: https://github.com/OmniSharp/omnisharp-roslyn/issues/2238
 
@@ -44,11 +50,12 @@ Simply setup a desired keymap to invoke definition command:
 
 ```vimscript
 nnoremap gd <cmd>lua require('omnisharp_extended').lsp_definitions()<cr>
+nnoremap gr <cmd>lua require('omnisharp_extended').lsp_references()<cr>
 ```
 
 ### Custom handler setup
 
-To use this plugin with custom lsp handler, `textDocument/definition` handler has to be overriden with the one provided by this plugin.
+To use this plugin with custom lsp handler, `textDocument/definition` or `textDocument/references` handler has to be overriden with the one provided by this plugin.
 
 First configure omnisharp as per [nvim-lspconfig](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#omnisharp).
 
@@ -64,6 +71,7 @@ local omnisharp_bin = "/path/to/omnisharp-repo/run"
 local config = {
   handlers = {
     ["textDocument/definition"] = require('omnisharp_extended').handler,
+    ["textDocument/references"] = require('omnisharp_extended').references_handler,
   },
   cmd = { omnisharp_bin, '--languageserver' , '--hostPID', tostring(pid) },
   -- rest of your settings
@@ -78,6 +86,7 @@ This handler can also be used for [nvim-telescope](https://github.com/nvim-teles
 
 ```vimscript
 nnoremap gd <cmd>lua require('omnisharp_extended').telescope_lsp_definitions()<cr>
+nnoremap gr <cmd>lua require('omnisharp_extended').telescope_lsp_references()<cr>
 ```
 
 ## Important notes

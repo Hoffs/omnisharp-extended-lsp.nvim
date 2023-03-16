@@ -15,12 +15,12 @@ end
 
 U.split = function(str, delimiter)
   -- https://gist.github.com/jaredallard/ddb152179831dd23b230
-  local result = { }
-  local from  = 1
+  local result = {}
+  local from = 1
   local delim_from, delim_to = string.find(str, delimiter, from)
   while delim_from do
-    table.insert(result, string.sub(str, from , delim_from-1))
-    from  = delim_to + 1
+    table.insert(result, string.sub(str, from, delim_from - 1))
+    from = delim_to + 1
     delim_from, delim_to = string.find(str, delimiter, from)
   end
   table.insert(result, string.sub(str, from))
@@ -34,8 +34,8 @@ U.get_or_create_buf = function(name)
 
     -- if we are looking for $metadata$ buffer, search for entire string anywhere
     -- in buffer name. On Windows nvim_buf_set_name might change the buffer name and include some stuff before.
-    if string.find(name, '^/%$metadata%$/.*$') then
-      local normalized_bufname = string.gsub(bufname, '\\', '/')
+    if string.find(name, "^/%$metadata%$/.*$") then
+      local normalized_bufname = string.gsub(bufname, "\\", "/")
       if string.find(normalized_bufname, name, 1, true) then
         return buf
       end
@@ -53,9 +53,9 @@ end
 
 U.set_qflist_locations = function(locations, offset_encoding)
   local items = vim.lsp.util.locations_to_items(locations, offset_encoding)
-  vim.fn.setqflist({}, ' ', {
-    title = 'Language Server';
-    items = items;
+  vim.fn.setqflist({}, " ", {
+    title = "Language Server",
+    items = items,
   })
 end
 
@@ -63,16 +63,49 @@ U.jump_to_location = function(location, bufnr)
   if not bufnr then
     -- if bufnr is provided, assume its configured
     bufnr = vim.uri_to_bufnr(location.uri)
-    vim.api.nvim_buf_set_option(0, 'buflisted', true)
+    vim.api.nvim_buf_set_option(0, "buflisted", true)
   end
 
   vim.api.nvim_set_current_buf(bufnr)
-  vim.api.nvim_win_set_cursor(0, { location.range.start.line+1, location.range.start.character })
+  vim.api.nvim_win_set_cursor(0, { location.range.start.line + 1, location.range.start.character })
 end
 
 U.file_exists = function(name)
-   local f = io.open(name, 'r')
-   if f ~= nil then io.close(f) return true else return false end
+  local f = io.open(name, "r")
+  if f ~= nil then
+    io.close(f)
+    return true
+  else
+    return false
+  end
+end
+
+U.get_omnisharp_client = function()
+  local clients = vim.lsp.buf_get_clients(0)
+  for _, client in pairs(clients) do
+    if client.name == "omnisharp" or client.name == "omnisharp_mono" then
+      return client
+    end
+  end
+end
+
+U.buf_from_source = function(file_name, source, client_id)
+  local normalized = string.gsub(source, "\r\n", "\n")
+  local source_lines = U.split(normalized, "\n")
+
+  local bufnr = U.get_or_create_buf(file_name)
+  -- TODO: check if bufnr == 0 -> error
+  vim.api.nvim_buf_set_option(bufnr, "modifiable", true)
+  vim.api.nvim_buf_set_option(bufnr, "readonly", false)
+  vim.api.nvim_buf_set_lines(bufnr, 0, -1, true, source_lines)
+  vim.api.nvim_buf_set_option(bufnr, "modifiable", false)
+  vim.api.nvim_buf_set_option(bufnr, "readonly", true)
+  vim.api.nvim_buf_set_option(bufnr, "filetype", "cs")
+  vim.api.nvim_buf_set_option(bufnr, "modified", false)
+
+  vim.lsp.buf_attach_client(bufnr, client_id)
+
+  return bufnr, file_name
 end
 
 return U
