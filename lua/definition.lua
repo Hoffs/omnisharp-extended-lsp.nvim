@@ -74,7 +74,7 @@ local M = {}
 -- Handles gotodefinition response and returns locations in nvim format
 M.handle_gotodefinition = function(err, result, ctx, config)
   if err then
-    vim.api.nvim_err_writeln("Error when executing " .. "o#/v2/gotodefinition" .. " : " .. err)
+    vim.api.nvim_err_writeln("Error when executing " .. "o#/v2/gotodefinition" .. " : " .. err.message)
   end
 
   local lsp_client = vim.lsp.get_client_by_id(ctx.client_id)
@@ -168,7 +168,7 @@ M.telescope_lsp_definitions_handler = function(err, result, ctx, config, opts)
   local locations = M.handle_gotodefinition(err, result, ctx, config)
 
   if #locations == 0 then
-    vim.notify('No definition found')
+    vim.notify("No definition found")
   elseif #locations == 1 and opts.jump_type ~= "never" then
     if opts.jump_type == "tab" then
       vim.cmd("tabedit")
@@ -230,7 +230,7 @@ M.lsp_definitions_handler = function(err, result, ctx, config)
   elseif #locations == 1 then
     vim.lsp.util.jump_to_location(locations[1], lsp_client.offset_encoding)
   else
-    vim.notify('No definition found')
+    vim.notify("No definition found")
   end
 end
 
