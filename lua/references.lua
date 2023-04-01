@@ -1,15 +1,11 @@
 local utils = require("omnisharp_extended/utils")
 local o_utils = require("omnisharp_utils")
+local t_utils = require("telescope_utils")
 
 local pickers = nil
 local finders = nil
 local conf = nil
-local telescope_exists, make_entry = pcall(require, "telescope.make_entry")
-if telescope_exists then
-  pickers = require("telescope.pickers")
-  finders = require("telescope.finders")
-  conf = require("telescope.config").values
-end
+local telescope_exists = pcall(require, "telescope.make_entry")
 
 --[[
 OmniSharp Protocol:
@@ -95,31 +91,7 @@ M.telescope_lsp_references_handler = function(err, result, ctx, config)
   local lsp_client = vim.lsp.get_client_by_id(ctx.client_id)
   local locations = M.handle_findusages(err, result, ctx, config)
 
-  if #locations == 0 then
-    vim.notify("No references found")
-  elseif #locations == 1 and opts.jump_type ~= "never" then
-    if opts.jump_type == "tab" then
-      vim.cmd("tabedit")
-    elseif opts.jump_type == "split" then
-      vim.cmd("new")
-    elseif opts.jump_type == "vsplit" then
-      vim.cmd("vnew")
-    end
-    vim.lsp.util.jump_to_location(locations[1], lsp_client.offset_encoding)
-  else
-    locations = vim.lsp.util.locations_to_items(locations, lsp_client.offset_encoding)
-    pickers
-      .new(opts, {
-        prompt_title = "LSP References",
-        finder = finders.new_table({
-          results = locations,
-          entry_maker = opts.entry_maker or make_entry.gen_from_quickfix(opts),
-        }),
-        previewer = conf.qflist_previewer(opts),
-        sorter = conf.generic_sorter(opts),
-      })
-      :find()
-  end
+  t_utils.list_or_jump("LSP References", locations, lsp_client, opts)
 end
 
 M.telescope_lsp_references = function(opts)
