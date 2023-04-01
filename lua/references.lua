@@ -78,7 +78,7 @@ local M = {}
 
 M.handle_findusages = function(err, result, ctx, config)
   if err then
-    vim.api.nvim_err_writeln("Error when executing " .. "o#/findusages" .. " : " .. err)
+    vim.api.nvim_err_writeln("Error when executing " .. "o#/findusages" .. " : " .. err.message)
     return
   end
 
