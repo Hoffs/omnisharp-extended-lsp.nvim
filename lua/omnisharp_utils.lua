@@ -99,4 +99,50 @@ OU.file_name_for_omnisharp = function(file_name)
   return file_name
 end
 
+OU.quickfixes_to_locations = function(quickfixes, lsp_client)
+  local locations = {}
+
+  for _, qf in ipairs(quickfixes) do
+    -- load sourcegenerated file if available
+    if qf.GeneratedFileInfo then
+      local params = {
+        timeout = 5000,
+      }
+
+      -- matches what request expects
+      for k, v in pairs(qf.GeneratedFileInfo) do
+        params[k] = v
+      end
+
+      OU.load_sourcegen_doc(params, lsp_client)
+    end
+
+    -- remap definition to nvim lsp location
+    local range = {}
+    range["start"] = {
+      line = qf.Line,
+      character = qf.Column,
+    }
+    range["end"] = {
+      line = qf.EndLine,
+      character = qf.EndColumn,
+    }
+
+    local fileName = qf.FileName
+
+    if fileName[1] ~= "/" then
+      fileName = "/" .. fileName
+    end
+
+    local location = {
+      uri = "file://" .. vim.fs.normalize(fileName),
+      range = range,
+    }
+
+    table.insert(locations, location)
+  end
+
+  return locations
+end
+
 return OU
