@@ -1,6 +1,7 @@
 local utils = require("omnisharp_extended/utils")
 local o_utils = require("omnisharp_utils")
-local t_utils = require("telescope_utils")
+local loc_utils = require("location_utils")
+local Command = require("generic_command")
 
 local telescope_exists = pcall(require, "telescope.make_entry")
 
@@ -62,10 +63,7 @@ o#/v2/gotodefinition
     }
 --]]
 
-local M = {}
-
--- Handles gotodefinition response and returns locations in nvim format
-M.handle_gotodefinition = function(err, result, ctx, config)
+function gotodefinition_to_locations(err, result, ctx, config)
   if err then
     vim.api.nvim_err_writeln("Error when executing " .. "o#/v2/gotodefinition" .. " : " .. err.message)
   end
@@ -134,87 +132,23 @@ M.handle_gotodefinition = function(err, result, ctx, config)
   return locations
 end
 
-M.textdocument_definition_flatten = function(result)
-  if not vim.tbl_islist(result) then
-    return { result }
-  end
+local gLspDefinitions = Command:new({
+  title = "LSP Definitions",
+  lsp_cmd_name = "textDocument/definition",
+  omnisharp_cmd_name = "o#/v2/gotodefinition",
+  omnisharp_result_to_locations = gotodefinition_to_locations,
+  location_callback = loc_utils.qflist_list_or_jump,
+  telescope_location_callback = loc_utils.telescope_list_or_jump,
+})
 
-  return result
-end
-
--- Retries definition command using custom logic if result contains "special" files
-M.handler = function(err, result, ctx, config)
-  local client = utils.get_omnisharp_client()
-  if
-    o_utils.has_meta_or_sourcegen(M.textdocument_definition_flatten(result))
-    or string.find(ctx.params.textDocument.uri, "^file:///%$metadata%$/.*$")
-  then
-    M.lsp_definitions()
-  else
-    return vim.lsp.handlers["textDocument/definition"](err, result, ctx, config)
-  end
-end
-
-M.telescope_lsp_definitions_handler = function(err, result, ctx, config, opts)
-  opts = opts or {}
-  local lsp_client = vim.lsp.get_client_by_id(ctx.client_id)
-  local locations = M.handle_gotodefinition(err, result, ctx, config)
-
-  t_utils.list_or_jump("LSP Definitions", locations, lsp_client, opts)
-end
-
-M.telescope_lsp_definitions = function(opts)
-  if not telescope_exists then
-    error("Telescope is not available, this function only works with Telescope.")
-  end
-
-  local client = utils.get_omnisharp_client()
-  if client then
-    local params = vim.lsp.util.make_position_params(0, client.offset_encoding)
-    local gotodefinitionParams = {
-      fileName = o_utils.file_name_for_omnisharp(params.textDocument.uri),
-      column = params.position.character,
-      line = params.position.line,
-    }
-
-    -- If invoked with telescope options, create closure that passes opts to real handler
-    local handler = M.telescope_lsp_definitions_handler
-    if opts then
-      handler = function(err, result, ctx, config)
-        M.telescope_lsp_definitions_handler(err, result, ctx, config, opts)
-      end
-    end
-
-    client.request("o#/v2/gotodefinition", gotodefinitionParams, handler)
-  end
-end
-
-M.lsp_definitions_handler = function(err, result, ctx, config)
-  local lsp_client = vim.lsp.get_client_by_id(ctx.client_id)
-  local locations = M.handle_gotodefinition(err, result, ctx, config)
-
-  if #locations > 1 then
-    utils.set_qflist_locations(locations, lsp_client.offset_encoding)
-    vim.api.nvim_command("copen")
-  elseif #locations == 1 then
-    vim.lsp.util.jump_to_location(locations[1], lsp_client.offset_encoding)
-  else
-    vim.notify("No definition found")
-  end
-end
-
-M.lsp_definitions = function()
-  local client = utils.get_omnisharp_client()
-  if client then
-    local params = vim.lsp.util.make_position_params(0, client.offset_encoding)
-    local gotodefinitionParams = {
-      fileName = o_utils.file_name_for_omnisharp(params.textDocument.uri),
-      column = params.position.character,
-      line = params.position.line,
-    }
-
-    client.request("o#/v2/gotodefinition", gotodefinitionParams, M.lsp_definitions_handler)
-  end
-end
-
-return M
+return {
+  handler = function(err, result, ctx, config)
+    gLspDefinitions:handler(err, result, ctx, config)
+  end,
+  omnisharp_command = function()
+    gLspDefinitions:omnisharp_cmd()
+  end,
+  telescope_command = function()
+    gLspDefinitions:telescope_cmd()
+  end,
+}
