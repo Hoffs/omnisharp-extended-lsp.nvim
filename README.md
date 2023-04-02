@@ -14,7 +14,7 @@ This will call omnisharp lsp using `o#/v2/gotodefinition` command instead of sta
 
 Using `require('omnisharp_extended').lsp_references()` instead of `vim.lsp.buf.references()`.
 
-References replacement works in similar fashion as well. It will call `o#/findusage` command instead of standard `textDocument/references` command. It also provides information about source generated files, so if such file is encountered, it will be loaded before selection is shown.
+References replacement works in similar fashion as well. It will call `o#/findusages` command instead of standard `textDocument/references` command. It also provides information about source generated files, so if such file is encountered, it will be loaded before selection is shown.
 
 ### Custom handler (*Suboptimal*)
 
