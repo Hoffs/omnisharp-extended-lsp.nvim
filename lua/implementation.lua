@@ -71,7 +71,7 @@ function implementations_to_locations(err, result, ctx, config)
   local lsp_client = vim.lsp.get_client_by_id(ctx.client_id)
   local locations = {}
 
-  if not result.QuickFixes then
+  if not result or not result.QuickFixes then
     return {}
   end
 
