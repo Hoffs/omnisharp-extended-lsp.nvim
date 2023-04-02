@@ -1,11 +1,7 @@
 local utils = require("omnisharp_extended/utils")
 local o_utils = require("omnisharp_utils")
-local t_utils = require("telescope_utils")
-
-local pickers = nil
-local finders = nil
-local conf = nil
-local telescope_exists = pcall(require, "telescope.make_entry")
+local loc_utils = require("location_utils")
+local Command = require("generic_command")
 
 --[[
 OmniSharp Protocol:
@@ -70,9 +66,7 @@ o#/v1/findusages
     }
 --]]
 
-local M = {}
-
-M.handle_findusages = function(err, result, ctx, config)
+function usages_to_locations(err, result, ctx, config)
   if err then
     vim.api.nvim_err_writeln("Error when executing " .. "o#/findusages" .. " : " .. err.message)
   end
@@ -86,74 +80,23 @@ M.handle_findusages = function(err, result, ctx, config)
   return o_utils.quickfixes_to_locations(result.QuickFixes, lsp_client)
 end
 
-M.telescope_lsp_references_handler = function(err, result, ctx, config)
-  opts = opts or {}
-  local lsp_client = vim.lsp.get_client_by_id(ctx.client_id)
-  local locations = M.handle_findusages(err, result, ctx, config)
+local gLsp = Command:new({
+  title = "LSP References",
+  lsp_cmd_name = "textDocument/references",
+  omnisharp_cmd_name = "o#/findusages",
+  omnisharp_result_to_locations = usages_to_locations,
+  location_callback = loc_utils.qflist_list_or_jump,
+  telescope_location_callback = loc_utils.telescope_list_or_jump,
+})
 
-  t_utils.list_or_jump("LSP References", locations, lsp_client, opts)
-end
-
-M.telescope_lsp_references = function(opts)
-  if not telescope_exists then
-    error("Telescope is not available, this function only works with Telescope.")
-  end
-
-  local client = utils.get_omnisharp_client()
-  if client then
-    local params = vim.lsp.util.make_position_params(0, client.offset_encoding)
-    local findusagesParams = {
-      fileName = o_utils.file_name_for_omnisharp(params.textDocument.uri),
-      column = params.position.character,
-      line = params.position.line,
-    }
-
-    -- If invoked with telescope options, create closure that passes opts to real handler
-    local handler = M.telescope_lsp_references_handler
-    if opts then
-      handler = function(err, result, ctx, config)
-        M.telescope_lsp_references_handler(err, result, ctx, config, opts)
-      end
-    end
-
-    client.request("o#/findusages", findusagesParams, handler)
-  end
-end
-
-M.lsp_references_handler = function(err, result, ctx, config)
-  local lsp_client = vim.lsp.get_client_by_id(ctx.client_id)
-  local locations = M.handle_findusages(err, result, ctx, config)
-
-  if #locations > 0 then
-    utils.set_qflist_locations(locations, lsp_client.offset_encoding)
-    vim.api.nvim_command("copen")
-    return true
-  else
-    vim.notify("No references found")
-  end
-end
-
-M.lsp_references = function()
-  local client = utils.get_omnisharp_client()
-  if client then
-    local params = vim.lsp.util.make_position_params(0, client.offset_encoding)
-    local findusagesParams = {
-      fileName = o_utils.file_name_for_omnisharp(params.textDocument.uri),
-      column = params.position.character,
-      line = params.position.line,
-    }
-
-    client.request("o#/findusages", findusagesParams, M.lsp_references_handler)
-  end
-end
-
-M.handler = function(err, result, ctx, config)
-  local client = utils.get_omnisharp_client()
-  if o_utils.has_meta_or_sourcegen(result) or string.find(ctx.params.textDocument.uri, "^file:///%$metadata%$/.*$") then
-    M.lsp_references()
-  else
-    return vim.lsp.handlers["textDocument/references"](err, result, ctx, config)
-  end
-end
-
-return M
+return {
+  handler = function(err, result, ctx, config)
+    gLsp:handler(err, result, ctx, config)
+  end,
+  omnisharp_command = function()
+    gLsp:omnisharp_cmd()
+  end,
+  telescope_command = function()
+    gLsp:telescope_cmd()
+  end,
+}

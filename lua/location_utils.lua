@@ -1,3 +1,4 @@
+local utils = require("omnisharp_extended/utils")
 local pickers = nil
 local finders = nil
 local conf = nil
@@ -10,7 +11,7 @@ end
 
 local M = {}
 
-M.list_or_jump = function(title, locations, lsp_client, opts)
+M.telescope_list_or_jump = function(title, locations, lsp_client, opts)
   if #locations == 0 then
     vim.notify("No locations found")
   elseif #locations == 1 and opts.jump_type ~= "never" then
@@ -35,6 +36,27 @@ M.list_or_jump = function(title, locations, lsp_client, opts)
         sorter = conf.generic_sorter(opts),
       })
       :find()
+  end
+end
+
+M.qflist_list = function(locations, lsp_client)
+  if #locations > 0 then
+    utils.set_qflist_locations(locations, lsp_client.offset_encoding)
+    vim.api.nvim_command("copen")
+    return true
+  else
+    vim.notify("No locations found")
+  end
+end
+
+M.qflist_list_or_jump = function(locations, lsp_client)
+  if #locations > 1 then
+    utils.set_qflist_locations(locations, lsp_client.offset_encoding)
+    vim.api.nvim_command("copen")
+  elseif #locations == 1 then
+    vim.lsp.util.jump_to_location(locations[1], lsp_client.offset_encoding)
+  else
+    vim.notify("No locations found")
   end
 end
 
