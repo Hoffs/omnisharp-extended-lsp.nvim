@@ -92,8 +92,13 @@ end
 
 OU.file_name_for_omnisharp = function(file_name)
   local file_name = string.gsub(file_name, "file://", "")
-  if string.find(file_name, "^/%$metadata%$/.*$") then
-    file_name = file_name:sub(2)
+  if vim.fn.has("win32") == 1 then
+    -- on windows, remove first slash
+    file_name = string.gsub(file_name, "^/(%a:/)", "%1", 1)
+  end
+
+  if string.find(file_name, "/%$metadata%$/.*$") then
+    file_name = string.gsub(file_name, ".*/(%$metadata%$/.*)", "%1")
   end
 
   return file_name
