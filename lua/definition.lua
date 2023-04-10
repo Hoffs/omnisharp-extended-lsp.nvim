@@ -117,7 +117,7 @@ function gotodefinition_to_locations(err, result, ctx, config)
 
     local fileName = definition.Location.FileName
 
-    if fileName[1] ~= "/" then
+    if fileName:sub(1) ~= "/" then
       fileName = "/" .. fileName
     end
 
