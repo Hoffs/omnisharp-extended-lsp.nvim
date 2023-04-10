@@ -84,7 +84,6 @@ OU.has_meta_or_sourcegen = function(result)
     local is_metadata = string.find(stripped_file_name, "^%$metadata%$/.*$")
     -- not sure how else to check for sourcegen file
     local exists = utils.file_exists(file_name)
-
     if is_metadata or not exists then
       return true
     end
@@ -96,12 +95,12 @@ end
 OU.file_name_for_omnisharp = function(file_name)
   local file_name = string.gsub(file_name, "file://", "")
   if vim.fn.has("win32") == 1 then
-    if file_name[1] == file_name[2] and file_name[1] == "/" then
+    if file_name:sub(1, 1) == file_name:sub(2, 2) and file_name:sub(1, 1) == "/" then
       -- if starts with //, absolute path
       -- this could break in obscure cases, where work dir is actually
       -- a network share or something that has such path
       file_name = string.sub(file_name, 3)
-    elseif file_name[1] == "/" then
+    elseif file_name:sub(1, 1) == "/" then
       -- remove / otherwise
       file_name = string.sub(file_name, 2)
     end
@@ -149,7 +148,7 @@ OU.quickfixes_to_locations = function(quickfixes, lsp_client)
 
     local fileName = qf.FileName
 
-    if fileName[1] ~= "/" then
+    if fileName:sub(1, 1) ~= "/" then
       fileName = "/" .. fileName
     end
 

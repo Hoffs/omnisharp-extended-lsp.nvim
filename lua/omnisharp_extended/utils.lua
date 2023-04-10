@@ -3,13 +3,13 @@ local U = {}
 U.abs_filename = function(filename)
   if vim.fn.has("win32") == 1 then
     -- either c:/something/something or //something/something
-    if filename[2] == ":" or (filename[1] == filename[2] and filename[1] == "/") then
+    if filename:sub(2, 2) == ":" or (filename:sub(1, 1) == filename:sub(2, 2) and filename:sub(1, 1) == "/") then
       return filename
     else
       return "//" .. filename
     end
   else
-    if filename[1] == "~" or filename[1] == "/" then
+    if filename:sub(1, 1) == "~" or filename:sub(1, 1) == "/" then
       return filename
     else
       return "/" .. filename

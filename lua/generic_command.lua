@@ -45,7 +45,10 @@ end
 
 function Command:handler(err, result, ctx, config)
   local client = utils.get_omnisharp_client()
-  if o_utils.has_meta_or_sourcegen(flatten_lsp_locations(result)) then
+  if
+    o_utils.has_meta_or_sourcegen(flatten_lsp_locations(result))
+    or string.find(ctx.params.textDocument.uri, ".*/%$metadata%$/.*$")
+  then
     self:omnisharp_cmd()
   else
     return vim.lsp.handlers[self.lsp_cmd_name](err, result, ctx, config)
