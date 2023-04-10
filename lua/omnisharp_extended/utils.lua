@@ -1,5 +1,22 @@
 local U = {}
 
+U.abs_filename = function(filename)
+  if vim.fn.has("win32") == 1 then
+    -- either c:/something/something or //something/something
+    if filename[2] == ":" or (filename[1] == filename[2] and filename[1] == "/") then
+      return filename
+    else
+      return "//" .. filename
+    end
+  else
+    if filename[1] == "~" or filename[1] == "/" then
+      return filename
+    else
+      return "/" .. filename
+    end
+  end
+end
+
 U.hex_to_char = function(x)
   return string.char(tonumber(x, 16))
 end
@@ -32,17 +49,8 @@ U.get_or_create_buf = function(name)
   for _, buf in pairs(buffers) do
     local bufname = vim.api.nvim_buf_get_name(buf)
 
-    -- if we are looking for $metadata$ buffer, search for entire string anywhere
-    -- in buffer name. On Windows nvim_buf_set_name might change the buffer name and include some stuff before.
-    if string.find(name, "^/%$metadata%$/.*$") then
-      local normalized_bufname = string.gsub(bufname, "\\", "/")
-      if string.find(normalized_bufname, name, 1, true) then
-        return buf
-      end
-    else
-      if bufname == name then
-        return buf
-      end
+    if bufname == name then
+      return buf
     end
   end
 
@@ -105,7 +113,7 @@ U.buf_from_source = function(file_name, source, client_id)
 
   vim.lsp.buf_attach_client(bufnr, client_id)
 
-  return bufnr, file_name
+  return bufnr, vim.api.nvim_buf_get_name(bufnr)
 end
 
 return U

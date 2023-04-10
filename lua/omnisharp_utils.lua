@@ -53,7 +53,7 @@ end
 
 -- Creates a buffer from metadata response.
 OU.buf_from_metadata = function(response, client_id)
-  local normalized_file_name = vim.fs.normalize("/" .. response.SourceName)
+  local normalized_file_name = utils.abs_filename(vim.fs.normalize(response.SourceName))
   return utils.buf_from_source(normalized_file_name, response.Source, client_id)
 end
 
@@ -73,14 +73,15 @@ end
 
 -- Creates a buffer from sourcegeneratedfile response.
 OU.buf_from_sourcegeneratedfile = function(response, client_id)
-  local normalized_file_name = vim.fs.normalize("/" .. response.SourceName)
+  local normalized_file_name = utils.abs_filename(vim.fs.normalize(response.SourceName))
   return utils.buf_from_source(normalized_file_name, response.Source, client_id)
 end
 
 OU.has_meta_or_sourcegen = function(result)
   for _, definition in ipairs(result) do
     local file_name = string.gsub(definition.uri, "file://", "")
-    local is_metadata = string.find(file_name, "^/%$metadata%$/.*$")
+    local stripped_file_name = OU.file_name_for_omnisharp(file_name)
+    local is_metadata = string.find(stripped_file_name, "^%$metadata%$/.*$")
     -- not sure how else to check for sourcegen file
     local exists = utils.file_exists(file_name)
 
@@ -88,15 +89,28 @@ OU.has_meta_or_sourcegen = function(result)
       return true
     end
   end
+
+  return false
 end
 
 OU.file_name_for_omnisharp = function(file_name)
   local file_name = string.gsub(file_name, "file://", "")
   if vim.fn.has("win32") == 1 then
-    -- on windows, remove first slash
-    file_name = string.gsub(file_name, "^/(%a:/)", "%1", 1)
+    if file_name[1] == file_name[2] and file_name[1] == "/" then
+      -- if starts with //, absolute path
+      -- this could break in obscure cases, where work dir is actually
+      -- a network share or something that has such path
+      file_name = string.sub(file_name, 3)
+    elseif file_name[1] == "/" then
+      -- remove / otherwise
+      file_name = string.sub(file_name, 2)
+    end
+
+    return file_name
   end
 
+  -- as unix paths normally start with /, to know if we need to trim
+  -- first /, search for $metadata$
   if string.find(file_name, "/%$metadata%$/.*$") then
     file_name = string.gsub(file_name, ".*/(%$metadata%$/.*)", "%1")
   end
