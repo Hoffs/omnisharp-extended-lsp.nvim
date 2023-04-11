@@ -93,7 +93,11 @@ M.get_metadata = function(locations)
       -- request_sync?
       -- if async, need to trigger when all are finished
       local result, err = client.request_sync('o#/metadata', params, 10000)
-      if not err then
+        if not err and result.result.Source == nil then
+          print("No definition found")
+          return nil
+        end
+        if not err and result.result.Source ~= nil then
         local bufnr, name = M.buf_from_metadata(result.result, client.id)
         -- change location name to the one returned from metadata
         -- alternative is to open buffer under location uri
@@ -151,6 +155,8 @@ end
 M.handle_locations = function(locations, offset_encoding)
   local fetched = M.get_metadata(locations)
 
+  if fetched == nil then
+    return true end
   if not vim.tbl_isempty(fetched) then
     if #locations > 1 then
       utils.set_qflist_locations(locations, offset_encoding)
