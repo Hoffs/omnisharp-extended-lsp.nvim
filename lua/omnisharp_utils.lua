@@ -53,8 +53,7 @@ end
 
 -- Creates a buffer from metadata response.
 OU.buf_from_metadata = function(response, client_id)
-  local normalized_file_name = utils.abs_filename(vim.fs.normalize(response.SourceName))
-  return utils.buf_from_source(normalized_file_name, response.Source, client_id)
+  return utils.buf_from_source(response.SourceName, response.Source, client_id)
 end
 
 -- params = {
@@ -73,8 +72,7 @@ end
 
 -- Creates a buffer from sourcegeneratedfile response.
 OU.buf_from_sourcegeneratedfile = function(response, client_id)
-  local normalized_file_name = utils.abs_filename(vim.fs.normalize(response.SourceName))
-  return utils.buf_from_source(normalized_file_name, response.Source, client_id)
+  return utils.buf_from_source(response.SourceName, response.Source, client_id)
 end
 
 OU.has_meta_or_sourcegen = function(result)
