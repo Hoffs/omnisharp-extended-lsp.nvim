@@ -98,10 +98,10 @@ U.get_omnisharp_client = function()
 end
 
 U.buf_from_source = function(file_name, source, client_id)
-  local normalized = string.gsub(source, "\r\n", "\n")
-  local source_lines = U.split(normalized, "\n")
+  local normalized_source = string.gsub(source, "\r\n", "\n")
+  local source_lines = U.split(normalized_source, "\n")
 
-  local bufnr = U.get_or_create_buf(file_name)
+  local bufnr = vim.uri_to_bufnr("file://" .. file_name)
   -- TODO: check if bufnr == 0 -> error
   vim.api.nvim_buf_set_option(bufnr, "modifiable", true)
   vim.api.nvim_buf_set_option(bufnr, "readonly", false)
