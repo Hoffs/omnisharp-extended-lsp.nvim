@@ -53,7 +53,7 @@ To use this plugin all that needs to be done is for the nvim lsp handler for
 
 If using `lspconfig` this can be done like this:
 
-First configure omnisharp as per [nvim-lspconfig](https://github.com/neovim/nvim-lspconfig/blob/master/CONFIG.md#omnisharp).
+First configure omnisharp as per [nvim-lspconfig](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#omnisharp).
 
 Then to that config add `handlers` with custom handler from this plugin.
 
