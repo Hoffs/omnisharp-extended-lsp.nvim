@@ -77,6 +77,8 @@ function gotodefinition_to_locations(err, result, ctx, config)
 
   for _, definition in ipairs(result.Definitions) do
     -- load metadata file if available
+
+    local buf_file_name = definition.Location.FileName
     if definition.MetadataSource then
       local params = {
         timeout = 5000,
@@ -87,7 +89,7 @@ function gotodefinition_to_locations(err, result, ctx, config)
         params[k] = v
       end
 
-      o_utils.load_metadata_doc(params, lsp_client)
+      _, buf_file_name = o_utils.load_metadata_doc(params, lsp_client)
     end
 
     -- load sourcegenerated file if available
@@ -101,7 +103,7 @@ function gotodefinition_to_locations(err, result, ctx, config)
         params[k] = v
       end
 
-      o_utils.load_sourcegen_doc(params, lsp_client)
+      _, buf_file_name = o_utils.load_sourcegen_doc(params, lsp_client)
     end
 
     -- remap definition to nvim lsp location
@@ -115,14 +117,8 @@ function gotodefinition_to_locations(err, result, ctx, config)
       character = definition.Location.Range.End.Column,
     }
 
-    local fileName = definition.Location.FileName
-
-    if fileName:sub(1) ~= "/" then
-      fileName = "/" .. fileName
-    end
-
     local location = {
-      uri = "file://" .. vim.fs.normalize(fileName),
+      uri = "file://" .. buf_file_name,
       range = range,
     }
 

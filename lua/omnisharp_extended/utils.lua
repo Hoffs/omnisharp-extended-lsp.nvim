@@ -44,21 +44,6 @@ U.split = function(str, delimiter)
   return result
 end
 
-U.get_or_create_buf = function(name)
-  local buffers = vim.api.nvim_list_bufs()
-  for _, buf in pairs(buffers) do
-    local bufname = vim.api.nvim_buf_get_name(buf)
-
-    if bufname == name then
-      return buf
-    end
-  end
-
-  local bufnr = vim.api.nvim_create_buf(true, true)
-  vim.api.nvim_buf_set_name(bufnr, name)
-  return bufnr
-end
-
 U.set_qflist_locations = function(locations, offset_encoding)
   local items = vim.lsp.util.locations_to_items(locations, offset_encoding)
   vim.fn.setqflist({}, " ", {
@@ -103,17 +88,27 @@ U.buf_from_source = function(file_name, source, client_id)
 
   local bufnr = vim.uri_to_bufnr("file://" .. file_name)
   -- TODO: check if bufnr == 0 -> error
-  vim.api.nvim_buf_set_option(bufnr, "modifiable", true)
-  vim.api.nvim_buf_set_option(bufnr, "readonly", false)
+  vim.api.nvim_set_option_value("modifiable", true, { buf = bufnr })
+  vim.api.nvim_set_option_value("readonly", false, { buf = bufnr })
   vim.api.nvim_buf_set_lines(bufnr, 0, -1, true, source_lines)
-  vim.api.nvim_buf_set_option(bufnr, "modifiable", false)
-  vim.api.nvim_buf_set_option(bufnr, "readonly", true)
-  vim.api.nvim_buf_set_option(bufnr, "filetype", "cs")
-  vim.api.nvim_buf_set_option(bufnr, "modified", false)
+  vim.api.nvim_set_option_value("modifiable", false, { buf = bufnr })
+  vim.api.nvim_set_option_value("readonly", true, { buf = bufnr })
+  vim.api.nvim_set_option_value("filetype", "cs", { buf = bufnr })
+  vim.api.nvim_set_option_value("modified", false, { buf = bufnr })
+  vim.api.nvim_buf_set_var(bufnr, "omnisharp_extended_file_name", file_name)
 
   vim.lsp.buf_attach_client(bufnr, client_id)
 
   return bufnr, vim.api.nvim_buf_get_name(bufnr)
+end
+
+U.bufname_from_bufnr = function(bufnr)
+  local maybe_name = U.buf_path_map[bufnr]
+  if maybe_name == nil then
+    maybe_name = vim.api.nvim_buf_get_name(bufnr)
+  end
+
+  return maybe_name
 end
 
 return U
