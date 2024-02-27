@@ -46,6 +46,7 @@ OU.load_metadata_doc = function(params, lsp_client)
   local result, err = lsp_client.request_sync("o#/metadata", params, 10000)
   if not err then
     local bufnr, name = OU.buf_from_metadata(result.result, lsp_client.id)
+    return bufnr, name
   else
     vim.api.nvim_err_writeln("Error when executing " .. "o#/metadata" .. " : " .. err)
   end
@@ -64,23 +65,20 @@ OU.load_sourcegen_doc = function(params, lsp_client)
   params.timeout = 5000
   local result, err = lsp_client.request_sync("o#/sourcegeneratedfile", params, 10000)
   if not err then
-    local bufnr, name = OU.buf_from_sourcegeneratedfile(result.result, lsp_client.id)
+    -- Creates a buffer from sourcegeneratedfile response.
+    local response = result.result
+    local bufnr, name = utils.buf_from_source(response.SourceName, response.Source, lsp_client.id)
+    return bufnr, name
   else
     vim.api.nvim_err_writeln("Error when executing " .. "o#/sourcegeneratedfile" .. " : " .. err)
   end
 end
 
--- Creates a buffer from sourcegeneratedfile response.
-OU.buf_from_sourcegeneratedfile = function(response, client_id)
-  return utils.buf_from_source(response.SourceName, response.Source, client_id)
-end
-
 OU.has_meta_or_sourcegen = function(result)
   for _, definition in ipairs(result) do
-    local file_name = string.gsub(definition.uri, "file://", "")
-    local stripped_file_name = OU.file_name_for_omnisharp(file_name)
-    local is_metadata = string.find(stripped_file_name, "^%$metadata%$/.*$")
-    -- not sure how else to check for sourcegen file
+    local file_name = OU.file_name_for_omnisharp(definition.uri)
+    local is_metadata = string.find(file_name, "^%$metadata%$/.*$")
+    -- not sure how else to check for sourcegen file, so just check for existence
     local exists = utils.file_exists(file_name)
     if is_metadata or not exists then
       return true
@@ -91,25 +89,15 @@ OU.has_meta_or_sourcegen = function(result)
 end
 
 OU.file_name_for_omnisharp = function(file_name)
-  local file_name = string.gsub(file_name, "file://", "")
-  if vim.fn.has("win32") == 1 then
-    if file_name:sub(1, 1) == file_name:sub(2, 2) and file_name:sub(1, 1) == "/" then
-      -- if starts with //, absolute path
-      -- this could break in obscure cases, where work dir is actually
-      -- a network share or something that has such path
-      file_name = string.sub(file_name, 3)
-    elseif file_name:sub(1, 1) == "/" then
-      -- remove / otherwise
-      file_name = string.sub(file_name, 2)
-    end
-
-    return file_name
+  local success, buf_file_name = pcall(vim.api.nvim_buf_get_var, 0, "omnisharp_extended_file_name")
+  if success then
+    return buf_file_name
   end
 
-  -- as unix paths normally start with /, to know if we need to trim
-  -- first /, search for $metadata$
-  if string.find(file_name, "/%$metadata%$/.*$") then
-    file_name = string.gsub(file_name, ".*/(%$metadata%$/.*)", "%1")
+  file_name = string.gsub(file_name, "file://", "")
+  if vim.fn.has("win32") and file_name:sub(1, 1) == "/" then
+    -- remove starting / on windows
+    file_name = string.sub(file_name, 2)
   end
 
   return file_name
@@ -119,6 +107,8 @@ OU.quickfixes_to_locations = function(quickfixes, lsp_client)
   local locations = {}
 
   for _, qf in ipairs(quickfixes) do
+    local buf_file_name = qf.FileName
+
     -- load sourcegenerated file if available
     if qf.GeneratedFileInfo then
       local params = {
@@ -130,7 +120,7 @@ OU.quickfixes_to_locations = function(quickfixes, lsp_client)
         params[k] = v
       end
 
-      OU.load_sourcegen_doc(params, lsp_client)
+      _, buf_file_name = OU.load_sourcegen_doc(params, lsp_client)
     end
 
     -- remap definition to nvim lsp location
@@ -144,14 +134,8 @@ OU.quickfixes_to_locations = function(quickfixes, lsp_client)
       character = qf.EndColumn,
     }
 
-    local fileName = qf.FileName
-
-    if fileName:sub(1, 1) ~= "/" then
-      fileName = "/" .. fileName
-    end
-
     local location = {
-      uri = "file://" .. vim.fs.normalize(fileName),
+      uri = "file://" .. buf_file_name,
       range = range,
     }
 
