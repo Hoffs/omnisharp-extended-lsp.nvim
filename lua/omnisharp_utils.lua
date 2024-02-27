@@ -95,7 +95,7 @@ OU.file_name_for_omnisharp = function(file_name)
   end
 
   file_name = string.gsub(file_name, "file://", "")
-  if vim.fn.has("win32") and file_name:sub(1, 1) == "/" then
+  if vim.fn.has("win32") == 1 and file_name:sub(1, 1) == "/" then
     -- remove starting / on windows
     file_name = string.sub(file_name, 2)
   end
