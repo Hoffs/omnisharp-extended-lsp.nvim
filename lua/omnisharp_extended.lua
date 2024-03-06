@@ -245,7 +245,7 @@ M.handle_locations_telescope = function(locations, offset_encoding, opts)
   end
 end
 
-M.handler_telescope = function(err, result, ctx, _)
+M.handler_telescope = function(err, result, ctx, _, opts)
   -- If definition request is made from meta document, then it SHOULD
   -- always return no results.
   local client = M.get_omnisharp_client()
@@ -275,15 +275,15 @@ M.handler_telescope = function(err, result, ctx, _)
       end
 
       local locations = M.definitions_to_locations(result.result.Definitions)
-      M.handle_locations_telescope(locations, client.offset_encoding)
+      M.handle_locations_telescope(locations, client.offset_encoding, opts)
     end
   end
 
   local locations = M.textdocument_definition_to_locations(result)
-  M.handle_locations_telescope(locations, client.offset_encoding)
+  M.handle_locations_telescope(locations, client.offset_encoding, opts)
 end
 
-M.telescope_lsp_definitions = function()
+M.telescope_lsp_definitions = function(opts)
   if not telescope_exists then
     error("Telescope is not available, this function only works with Telescope.")
   end
@@ -294,7 +294,7 @@ M.telescope_lsp_definitions = function()
 
     local handler = function(err, result, ctx, config)
       ctx.params = params
-      M.handler_telescope(err, result, ctx, config)
+      M.handler_telescope(err, result, ctx, config, opts)
     end
 
     client.request('textDocument/definition', params, handler)
