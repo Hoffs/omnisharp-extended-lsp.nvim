@@ -45,16 +45,20 @@ o#/sourcegeneratedfile
 OU.load_metadata_doc = function(params, lsp_client)
   local result, err = lsp_client.request_sync("o#/metadata", params, 10000)
   if not err then
-    local bufnr, name = OU.buf_from_metadata(result.result, lsp_client.id)
+    local response = result.result
+
+    -- In some cases metadata might return nothing,
+    -- see https://github.com/Hoffs/omnisharp-extended-lsp.nvim/issues/11
+    -- In that case return nil and handle this as non-existant location
+    if vim.tbl_isempty(response) then
+      return nil
+    end
+
+    local bufnr, name = utils.buf_from_source(response.SourceName, response.Source, lsp_client.id)
     return bufnr, name
   else
     vim.api.nvim_err_writeln("Error when executing " .. "o#/metadata" .. " : " .. err)
   end
-end
-
--- Creates a buffer from metadata response.
-OU.buf_from_metadata = function(response, client_id)
-  return utils.buf_from_source(response.SourceName, response.Source, client_id)
 end
 
 -- params = {
