@@ -117,12 +117,13 @@ function gotodefinition_to_locations(err, result, ctx, config)
       character = definition.Location.Range.End.Column,
     }
 
-    local location = {
-      uri = "file://" .. buf_file_name,
-      range = range,
-    }
-
-    table.insert(locations, location)
+    if buf_file_name ~= nil then
+      local location = {
+        uri = "file://" .. buf_file_name,
+        range = range,
+      }
+      table.insert(locations, location)
+    end
   end
 
   return locations
