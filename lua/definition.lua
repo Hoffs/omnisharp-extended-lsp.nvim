@@ -128,7 +128,7 @@ function gotodefinition_to_locations(err, result, ctx, config)
   return locations
 end
 
-local gLspDefinitions = Command:new({
+local gLsp = Command:new({
   title = "LSP Definitions",
   lsp_cmd_name = "textDocument/definition",
   omnisharp_cmd_name = "o#/v2/gotodefinition",
@@ -139,12 +139,12 @@ local gLspDefinitions = Command:new({
 
 return {
   handler = function(err, result, ctx, config)
-    gLspDefinitions:handler(err, result, ctx, config)
+    gLsp:handler(err, result, ctx, config)
   end,
   omnisharp_command = function()
-    gLspDefinitions:omnisharp_cmd()
+    gLsp:omnisharp_cmd()
   end,
   telescope_command = function()
-    gLspDefinitions:telescope_cmd()
+    gLsp:telescope_cmd()
   end,
 }
