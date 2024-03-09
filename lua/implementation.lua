@@ -94,7 +94,7 @@ return {
   omnisharp_command = function()
     gLsp:omnisharp_cmd()
   end,
-  telescope_command = function()
-    gLsp:telescope_cmd()
+  telescope_command = function(opts)
+    gLsp:telescope_cmd(opts)
   end,
 }
