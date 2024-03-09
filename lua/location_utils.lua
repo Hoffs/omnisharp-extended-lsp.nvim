@@ -11,18 +11,23 @@ end
 
 local M = {}
 
-M.telescope_list_or_jump = function(title, locations, lsp_client, opts)
+M.telescope_list_or_jump = function(title, params, locations, lsp_client, opts)
   if #locations == 0 then
     vim.notify("No locations found")
   elseif #locations == 1 and opts.jump_type ~= "never" then
-    if opts.jump_type == "tab" then
-      vim.cmd("tabedit")
-    elseif opts.jump_type == "split" then
-      vim.cmd("new")
-    elseif opts.jump_type == "vsplit" then
-      vim.cmd("vnew")
+    local current_uri = params.fileName
+    local target_uri = locations[1].uri or locations[1].targetUri
+    if current_uri ~= string.gsub(target_uri, "file://", "") then
+      if opts.jump_type == "tab" then
+        vim.cmd("tabedit")
+      elseif opts.jump_type == "split" then
+        vim.cmd("new")
+      elseif opts.jump_type == "vsplit" then
+        vim.cmd("vnew")
+      end
     end
-    vim.lsp.util.jump_to_location(locations[1], lsp_client.offset_encoding)
+
+    vim.lsp.util.jump_to_location(locations[1], lsp_client.offset_encoding, opts.reuse_win)
   else
     locations = vim.lsp.util.locations_to_items(locations, lsp_client.offset_encoding)
     pickers
@@ -34,6 +39,8 @@ M.telescope_list_or_jump = function(title, locations, lsp_client, opts)
         }),
         previewer = conf.qflist_previewer(opts),
         sorter = conf.generic_sorter(opts),
+        push_cursor_on_edit = true,
+        push_tagstack_on_edit = true,
       })
       :find()
   end

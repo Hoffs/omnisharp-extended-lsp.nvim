@@ -18,7 +18,7 @@ local Command = {
   omnisharp_cmd_name = "o#/v2/gotodefinition",
   omnisharp_result_to_locations = function(err, result, ctx, config) end,
   location_callback = function(locations, lsp_client) end,
-  telescope_location_callback = function(locations, lsp_client, telescope_opts) end,
+  telescope_location_callback = function(locations, r_params, lsp_client, telescope_opts) end,
 }
 
 function Command:new(o)
@@ -59,7 +59,7 @@ function Command:telescope_cmd_handler(err, result, ctx, config, opts)
   opts = opts or {}
   local lsp_client = vim.lsp.get_client_by_id(ctx.client_id)
   local locations = self.omnisharp_result_to_locations(err, result, ctx, config)
-  self.telescope_location_callback(self.title, locations, lsp_client, opts)
+  self.telescope_location_callback(self.title, ctx.params, locations, lsp_client, opts)
 end
 
 function Command:telescope_cmd(opts)
