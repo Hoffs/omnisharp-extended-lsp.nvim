@@ -3,9 +3,9 @@
 Extended LSP handlers and additional commands that support and are aware of OmniSharp `$metadata` documents (e.g. decompilation) and source generated documents.
 
 Currently supported commands:
-- definitions
-- references
-- implementation
+- `textDocument/definition`
+- `textDocument/references`
+- `textDocument/implementation`
 
 Related issue on `$metadata` documents: https://github.com/OmniSharp/omnisharp-roslyn/issues/2238
 
