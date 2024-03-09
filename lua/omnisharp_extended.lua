@@ -5,11 +5,14 @@ local o_utils = require("omnisharp_utils")
 
 local M = {}
 
--- left for back-compat
+-- kept for back-compat, new naming follows original LSP naming
 M.handler = m_definition.handler
-
 M.lsp_definitions = m_definition.omnisharp_command
 M.telescope_lsp_definitions = m_definition.telescope_command
+
+
+M.lsp_definition = m_definition.omnisharp_command
+M.telescope_lsp_definition = m_definition.telescope_command
 M.definition_handler = m_definition.handler
 
 M.lsp_references = m_references.omnisharp_command

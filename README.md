@@ -21,7 +21,7 @@ Using provided custom command for each supported action:
 
 ```vim
 -- replaces vim.lsp.buf.definition()
-nnoremap gd <cmd>lua require('omnisharp_extended').lsp_definitions()<cr>
+nnoremap gd <cmd>lua require('omnisharp_extended').lsp_definition()<cr>
 
 -- replaces vim.lsp.buf.references()
 nnoremap gr <cmd>lua require('omnisharp_extended').lsp_references()<cr>
@@ -39,7 +39,7 @@ There are also commands provided specifically for [nvim-telescope](https://githu
 ```vim
 nnoremap gr <cmd>lua require('omnisharp_extended').telescope_lsp_references()<cr>
 -- options are supported as well
-nnoremap gd <cmd>lua require('omnisharp_extended').telescope_lsp_definitions({ jump_type = "vsplit" })<cr>
+nnoremap gd <cmd>lua require('omnisharp_extended').telescope_lsp_definition({ jump_type = "vsplit" })<cr>
 nnoremap gi <cmd>lua require('omnisharp_extended').telescope_lsp_implementation()<cr>
 ```
 
