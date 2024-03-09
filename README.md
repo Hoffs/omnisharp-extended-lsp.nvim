@@ -13,7 +13,7 @@ Related issue on `$metadata` documents: https://github.com/OmniSharp/omnisharp-r
 
 There are 2 ways to use the plugin, using custom command or overriding lsp handler.
 
-(tested with Neovim 0.9.5 and 0.10.0 nightly)
+(tested with Neovim 0.9.5 on Windows and 0.10.0 nightly on MacOS)
 
 ### Custom command (*Optimal*)
 
