@@ -2,8 +2,6 @@ local utils = require("omnisharp_extended/utils")
 local o_utils = require("omnisharp_utils")
 local loc_utils = require("location_utils")
 
-local telescope_exists = pcall(require, "telescope.make_entry")
-
 function flatten_lsp_locations(result)
   if not vim.tbl_islist(result) then
     return { result }
@@ -44,7 +42,6 @@ function Command:omnisharp_cmd()
 end
 
 function Command:handler(err, result, ctx, config)
-  local client = utils.get_omnisharp_client()
   if
     o_utils.has_meta_or_sourcegen(flatten_lsp_locations(result))
     or string.find(ctx.params.textDocument.uri, ".*%$metadata%$/.*$")
@@ -63,6 +60,7 @@ function Command:telescope_cmd_handler(err, result, ctx, config, opts)
 end
 
 function Command:telescope_cmd(opts)
+  local telescope_exists = pcall(require, "telescope.make_entry")
   if not telescope_exists then
     error("Telescope is not available, this function only works with Telescope.")
   end

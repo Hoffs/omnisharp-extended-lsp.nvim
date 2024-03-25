@@ -1,17 +1,18 @@
 local utils = require("omnisharp_extended/utils")
-local pickers = nil
-local finders = nil
-local conf = nil
-local telescope_exists, make_entry = pcall(require, "telescope.make_entry")
-if telescope_exists then
-  pickers = require("telescope.pickers")
-  finders = require("telescope.finders")
-  conf = require("telescope.config").values
-end
 
 local M = {}
 
 M.telescope_list_or_jump = function(title, params, locations, lsp_client, opts)
+  local telescope_exists, make_entry = pcall(require, "telescope.make_entry")
+  if not telescope_exists then
+    print("Telescope is required for this action.")
+    return
+  end
+
+  local pickers = require("telescope.pickers")
+  local finders = require("telescope.finders")
+  local conf = require("telescope.config").values
+
   if #locations == 0 then
     vim.notify("No locations found")
   elseif #locations == 1 and opts.jump_type ~= "never" then

@@ -1,4 +1,3 @@
-local utils = require("omnisharp_extended/utils")
 local o_utils = require("omnisharp_utils")
 local loc_utils = require("location_utils")
 local Command = require("generic_command")
