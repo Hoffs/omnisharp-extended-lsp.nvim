@@ -4,6 +4,7 @@ Extended LSP handlers and additional commands that support and are aware of Omni
 
 Currently supported commands:
 - `textDocument/definition`
+- `textDocument/typeDefinition`
 - `textDocument/references`
 - `textDocument/implementation`
 
@@ -23,6 +24,9 @@ Using provided custom command for each supported action:
 -- replaces vim.lsp.buf.definition()
 nnoremap gd <cmd>lua require('omnisharp_extended').lsp_definition()<cr>
 
+-- replaces vim.lsp.buf.type_definition()
+nnoremap <leader>D <cmd>lua require('omnisharp_extended').lsp_type_definition()<cr>
+
 -- replaces vim.lsp.buf.references()
 nnoremap gr <cmd>lua require('omnisharp_extended').lsp_references()<cr>
 
@@ -40,6 +44,7 @@ There are also commands provided specifically for [nvim-telescope](https://githu
 nnoremap gr <cmd>lua require('omnisharp_extended').telescope_lsp_references()<cr>
 -- options are supported as well
 nnoremap gd <cmd>lua require('omnisharp_extended').telescope_lsp_definition({ jump_type = "vsplit" })<cr>
+nnoremap <leader>D <cmd>lua require('omnisharp_extended').telescope_lsp_type_definition()<cr>
 nnoremap gi <cmd>lua require('omnisharp_extended').telescope_lsp_implementation()<cr>
 ```
 
@@ -52,6 +57,7 @@ local config = {
   ...
   handlers = {
     ["textDocument/definition"] = require('omnisharp_extended').definition_handler,
+    ["textDocument/typeDefinition"] = require('omnisharp_extended').type_definition_handler,
     ["textDocument/references"] = require('omnisharp_extended').references_handler,
     ["textDocument/implementation"] = require('omnisharp_extended').implementation_handler,
   },
