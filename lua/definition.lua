@@ -24,6 +24,26 @@ o#/v2/gotodefinition
         public SourceGeneratedFileInfo? SourceGeneratedFileInfo { get; init; }
     }
 
+o#/v2/gototypedefinition
+    public class GotoTypeDefinitionRequest : Request
+    {
+        public int Timeout { get; set; } = 10000;
+        public bool WantMetadata { get; set; }
+    }
+
+    public record GotoTypeDefinitionResponse
+    {
+        public List<TypeDefinition>? Definitions { get; init; }
+    }
+
+    public record TypeDefinition
+    {
+        public Location Location { get; init; } = null!;
+        public MetadataSource? MetadataSource { get; init; }
+        public SourceGeneratedFileInfo? SourceGeneratedFileInfo { get; init; }
+    }
+
+shared
     public record Location
     {
         public string FileName { get; init; } = null!;
@@ -62,7 +82,7 @@ o#/v2/gotodefinition
 
 function gotodefinition_to_locations(err, result, ctx, config)
   if err then
-    vim.api.nvim_err_writeln("Error when executing " .. "o#/v2/gotodefinition" .. " : " .. err.message)
+    vim.api.nvim_err_writeln("Error when executing " .. ctx.method .. " : " .. err.message)
   end
 
   local lsp_client = vim.lsp.get_client_by_id(ctx.client_id)
@@ -126,7 +146,7 @@ function gotodefinition_to_locations(err, result, ctx, config)
   return locations
 end
 
-local gLsp = Command:new({
+local definitionGLsp = Command:new({
   title = "LSP Definitions",
   lsp_cmd_name = "textDocument/definition",
   omnisharp_cmd_name = "o#/v2/gotodefinition",
@@ -135,14 +155,36 @@ local gLsp = Command:new({
   telescope_location_callback = loc_utils.telescope_list_or_jump,
 })
 
+local typeDefinitionGLsp = Command:new({
+  title = "LSP Type Definitions",
+  lsp_cmd_name = "textDocument/typeDefinition",
+  omnisharp_cmd_name = "o#/gototypedefinition",
+  omnisharp_result_to_locations = gotodefinition_to_locations,
+  location_callback = loc_utils.qflist_list_or_jump,
+  telescope_location_callback = loc_utils.telescope_list_or_jump,
+})
+
 return {
-  handler = function(err, result, ctx, config)
-    gLsp:handler(err, result, ctx, config)
-  end,
-  omnisharp_command = function()
-    gLsp:omnisharp_cmd()
-  end,
-  telescope_command = function(opts)
-    gLsp:telescope_cmd(opts)
-  end,
+  definition = {
+    handler = function(err, result, ctx, config)
+      definitionGLsp:handler(err, result, ctx, config)
+    end,
+    omnisharp_command = function()
+      definitionGLsp:omnisharp_cmd()
+    end,
+    telescope_command = function(opts)
+      definitionGLsp:telescope_cmd(opts)
+    end,
+  },
+  typeDefinition = {
+    handler = function(err, result, ctx, config)
+      typeDefinitionGLsp:handler(err, result, ctx, config)
+    end,
+    omnisharp_command = function()
+      typeDefinitionGLsp:omnisharp_cmd()
+    end,
+    telescope_command = function(opts)
+      typeDefinitionGLsp:telescope_cmd(opts)
+    end,
+  },
 }
