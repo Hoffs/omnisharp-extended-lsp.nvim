@@ -1,9 +1,10 @@
 local utils = require("omnisharp_extended/utils")
 local o_utils = require("omnisharp_utils")
 local loc_utils = require("location_utils")
+local islist = vim.islist or vim.tbl_islist
 
 function flatten_lsp_locations(result)
-  if not vim.tbl_islist(result) then
+  if not islist(result) then
     return { result }
   end
 
