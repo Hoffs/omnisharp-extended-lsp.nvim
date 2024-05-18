@@ -74,7 +74,13 @@ U.file_exists = function(name)
 end
 
 U.get_omnisharp_client = function()
-  local clients = vim.lsp.buf_get_clients(0)
+  local clients = nil;
+  if vim.lsp.get_clients ~= nil then
+    clients = vim.lsp.get_clients({ buffer = 0 })
+  else
+    clients = vim.lsp.buf_get_clients(0)
+  end
+
   for _, client in pairs(clients) do
     if client.name == "omnisharp" or client.name == "omnisharp_mono" then
       return client
