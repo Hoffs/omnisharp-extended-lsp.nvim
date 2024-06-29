@@ -98,13 +98,7 @@ OU.file_name_for_omnisharp = function(file_name)
     return buf_file_name
   end
 
-  file_name = string.gsub(file_name, "file://", "")
-  if vim.fn.has("win32") == 1 and file_name:sub(1, 1) == "/" then
-    -- remove starting / on windows
-    file_name = string.sub(file_name, 2)
-  end
-
-  return file_name
+  return vim.uri_to_fname(file_name)
 end
 
 OU.quickfixes_to_locations = function(quickfixes, lsp_client)
