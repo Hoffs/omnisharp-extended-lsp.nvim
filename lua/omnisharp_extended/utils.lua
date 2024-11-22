@@ -52,17 +52,6 @@ U.set_qflist_locations = function(locations, offset_encoding)
   })
 end
 
-U.jump_to_location = function(location, bufnr)
-  if not bufnr then
-    -- if bufnr is provided, assume its configured
-    bufnr = vim.uri_to_bufnr(location.uri)
-    vim.api.nvim_buf_set_option(0, "buflisted", true)
-  end
-
-  vim.api.nvim_set_current_buf(bufnr)
-  vim.api.nvim_win_set_cursor(0, { location.range.start.line + 1, location.range.start.character })
-end
-
 U.file_exists = function(name)
   local f = io.open(name, "r")
   if f ~= nil then
