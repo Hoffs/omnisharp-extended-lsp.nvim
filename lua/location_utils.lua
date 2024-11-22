@@ -28,7 +28,11 @@ M.telescope_list_or_jump = function(title, params, locations, lsp_client, opts)
       end
     end
 
-    vim.lsp.util.jump_to_location(locations[1], lsp_client.offset_encoding, opts.reuse_win)
+    if vim.lsp.util.show_document ~= nil then
+      vim.lsp.util.show_document(locations[1], lsp_client.offset_encoding, { reuse_win = opts.reuse_win })
+    else
+      vim.lsp.util.jump_to_location(locations[1], lsp_client.offset_encoding, opts.reuse_win)
+    end
   else
     locations = vim.lsp.util.locations_to_items(locations, lsp_client.offset_encoding)
     pickers
@@ -62,7 +66,8 @@ M.qflist_list_or_jump = function(locations, lsp_client)
     utils.set_qflist_locations(locations, lsp_client.offset_encoding)
     vim.api.nvim_command("copen")
   elseif #locations == 1 then
-    vim.lsp.util.jump_to_location(locations[1], lsp_client.offset_encoding)
+    local show_document = vim.lsp.util.show_document or vim.lsp.util.jump_to_location
+    show_document(locations[1], lsp_client.offset_encoding)
   else
     vim.notify("No locations found")
   end
