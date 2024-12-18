@@ -54,7 +54,6 @@ function Command:handler(err, result, ctx, config)
 end
 
 function Command:telescope_cmd_handler(err, result, ctx, config, opts)
-  opts = opts or {}
   local lsp_client = vim.lsp.get_client_by_id(ctx.client_id)
   local locations = self.omnisharp_result_to_locations(err, result, ctx, config)
   self.telescope_location_callback(self.title, ctx.params, locations, lsp_client, opts)
@@ -66,6 +65,7 @@ function Command:telescope_cmd(opts)
     error("Telescope is not available, this function only works with Telescope.")
   end
 
+  opts = opts or {}
   local client = utils.get_omnisharp_client()
   if client then
     -- closure with passed in telescope options
@@ -73,7 +73,7 @@ function Command:telescope_cmd(opts)
       self:telescope_cmd_handler(err, result, ctx, config, opts)
     end
 
-    client.request(self.omnisharp_cmd_name, o_utils.cmd_params(client), handler)
+    client.request(self.omnisharp_cmd_name, o_utils.cmd_params(client, opts), handler)
   end
 end
 
