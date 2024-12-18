@@ -3,12 +3,13 @@
 Extended LSP handlers and additional commands that support and are aware of OmniSharp `$metadata` documents (e.g. decompilation) and source generated documents.
 
 Currently supported commands:
+
 - `textDocument/definition`
 - `textDocument/typeDefinition`
 - `textDocument/references`
 - `textDocument/implementation`
 
-Related issue on `$metadata` documents: https://github.com/OmniSharp/omnisharp-roslyn/issues/2238
+Related issue on `$metadata` documents: <https://github.com/OmniSharp/omnisharp-roslyn/issues/2238>
 
 ## How to use
 
@@ -46,6 +47,20 @@ nnoremap gr <cmd>lua require('omnisharp_extended').telescope_lsp_references()<cr
 nnoremap gd <cmd>lua require('omnisharp_extended').telescope_lsp_definition({ jump_type = "vsplit" })<cr>
 nnoremap <leader>D <cmd>lua require('omnisharp_extended').telescope_lsp_type_definition()<cr>
 nnoremap gi <cmd>lua require('omnisharp_extended').telescope_lsp_implementation()<cr>
+```
+
+You can pass in the `excludeDefinition` option which does the equivalent of the `include_declaration` telescope setting.
+
+```lua
+vim.keymap.set(
+  "n",
+  "gr",
+  function() require("omnisharp_extended").telescope_lsp_references(require("telescope.themes").get_ivy({ excludeDefinition = true })) end,
+  { noremap = true }
+)
+vim.keymap.set("n", "gd", require("omnisharp_extended").telescope_lsp_definition, { noremap = true })
+vim.keymap.set("n", "<leader>D", function() require("omnisharp_extended").telescope_lsp_references() end, { noremap = true })
+vim.keymap.set("n", "gi", require("omnisharp_extended").telescope_lsp_implementation, { noremap = true })
 ```
 
 ### Custom handler (*Suboptimal*)
