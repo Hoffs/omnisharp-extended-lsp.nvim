@@ -3,13 +3,12 @@
 Extended LSP handlers and additional commands that support and are aware of OmniSharp `$metadata` documents (e.g. decompilation) and source generated documents.
 
 Currently supported commands:
-
 - `textDocument/definition`
 - `textDocument/typeDefinition`
 - `textDocument/references`
 - `textDocument/implementation`
 
-Related issue on `$metadata` documents: <https://github.com/OmniSharp/omnisharp-roslyn/issues/2238>
+Related issue on `$metadata` documents: https://github.com/OmniSharp/omnisharp-roslyn/issues/2238
 
 ## How to use
 
@@ -49,7 +48,7 @@ nnoremap <leader>D <cmd>lua require('omnisharp_extended').telescope_lsp_type_def
 nnoremap gi <cmd>lua require('omnisharp_extended').telescope_lsp_implementation()<cr>
 ```
 
-You can pass in the `excludeDefinition` option which does the equivalent of the `include_declaration` telescope setting.
+You can also pass in the `excludeDefinition` option which does the equivalent of the `include_declaration` telescope setting.
 
 ```lua
 vim.keymap.set(
