@@ -145,11 +145,12 @@ end
 
 OU.cmd_params = function(lsp_client, opts)
   local params = vim.lsp.util.make_position_params(0, lsp_client.offset_encoding)
+  local excludeDefinition = (opts and opts.excludeDefinition) or false
   return {
     fileName = OU.file_name_for_omnisharp(params.textDocument.uri),
     column = params.position.character,
     line = params.position.line,
-    excludeDefinition = opts.excludeDefinition or false,
+    excludeDefinition = excludeDefinition
   }
 end
 

@@ -17,7 +17,7 @@ local Command = {
   omnisharp_cmd_name = "o#/v2/gotodefinition",
   omnisharp_result_to_locations = function(err, result, ctx, config) end,
   location_callback = function(locations, lsp_client) end,
-  telescope_location_callback = function(locations, r_params, lsp_client, telescope_opts) end,
+  telescope_location_callback = function(title, params, locations, lsp_client, opts) end,
 }
 
 function Command:new(o)
@@ -64,15 +64,12 @@ function Command:telescope_cmd(opts)
   if not telescope_exists then
     error("Telescope is not available, this function only works with Telescope.")
   end
-
-  opts = opts or {}
   local client = utils.get_omnisharp_client()
   if client then
     -- closure with passed in telescope options
     local handler = function(err, result, ctx, config)
       self:telescope_cmd_handler(err, result, ctx, config, opts)
     end
-
     client.request(self.omnisharp_cmd_name, o_utils.cmd_params(client, opts), handler)
   end
 end

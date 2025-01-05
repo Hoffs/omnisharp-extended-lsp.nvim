@@ -12,6 +12,7 @@ M.telescope_list_or_jump = function(title, params, locations, lsp_client, opts)
   local pickers = require("telescope.pickers")
   local finders = require("telescope.finders")
   local conf = require("telescope.config").values
+  opts = opts or {}
 
   if #locations == 0 then
     vim.notify("No locations found")
