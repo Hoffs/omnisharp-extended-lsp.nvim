@@ -76,7 +76,7 @@ function gotodefinition_to_locations(err, result, ctx, config)
     -- load metadata file if available
 
     local buf_file_name = definition.Location.FileName
-    if definition.MetadataSource then
+    if definition.MetadataSource ~= vim.NIL then
       local params = {
         timeout = 5000,
       }
@@ -90,7 +90,7 @@ function gotodefinition_to_locations(err, result, ctx, config)
     end
 
     -- load sourcegenerated file if available
-    if definition.SourceGeneratedFileInfo then
+    if definition.SourceGeneratedFileInfo ~= vim.NIL then
       local params = {
         timeout = 5000,
       }
