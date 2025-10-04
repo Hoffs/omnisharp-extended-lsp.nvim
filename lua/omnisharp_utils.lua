@@ -108,7 +108,7 @@ OU.quickfixes_to_locations = function(quickfixes, lsp_client)
     local buf_file_name = qf.FileName
 
     -- load sourcegenerated file if available
-    if qf.GeneratedFileInfo then
+    if qf.GeneratedFileInfo ~= vim.NIL then
       local params = {
         timeout = 5000,
       }
