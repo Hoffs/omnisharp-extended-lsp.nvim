@@ -36,7 +36,7 @@ end
 function Command:omnisharp_cmd()
   local client = utils.get_omnisharp_client()
   if client then
-    client.request(self.omnisharp_cmd_name, o_utils.cmd_params(client), function(err, result, ctx, config)
+    client:request(self.omnisharp_cmd_name, o_utils.cmd_params(client), function(err, result, ctx, config)
       self:omnisharp_cmd_handler(err, result, ctx, config)
     end)
   end
@@ -70,7 +70,7 @@ function Command:telescope_cmd(opts)
     local handler = function(err, result, ctx, config)
       self:telescope_cmd_handler(err, result, ctx, config, opts)
     end
-    client.request(self.omnisharp_cmd_name, o_utils.cmd_params(client, opts), handler)
+    client:request(self.omnisharp_cmd_name, o_utils.cmd_params(client, opts), handler)
   end
 end
 

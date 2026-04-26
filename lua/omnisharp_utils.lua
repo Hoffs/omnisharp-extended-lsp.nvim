@@ -43,7 +43,7 @@ o#/sourcegeneratedfile
 --   Language
 -- }
 OU.load_metadata_doc = function(params, lsp_client)
-  local result, err = lsp_client.request_sync("o#/metadata", params, 10000)
+  local result, err = lsp_client:request_sync("o#/metadata", params, 10000)
   if not err then
     local response = result.result
 
@@ -67,7 +67,7 @@ end
 -- }
 OU.load_sourcegen_doc = function(params, lsp_client)
   params.timeout = 5000
-  local result, err = lsp_client.request_sync("o#/sourcegeneratedfile", params, 10000)
+  local result, err = lsp_client:request_sync("o#/sourcegeneratedfile", params, 10000)
   if not err then
     -- Creates a buffer from sourcegeneratedfile response.
     local response = result.result
